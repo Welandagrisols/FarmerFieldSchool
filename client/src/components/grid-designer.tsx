@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { Plot } from "@shared/schema";
+import { useState, useRef } from "react";
+import { Plot, Path } from "@shared/schema";
 import { DraggablePlot } from "./draggable-plot";
+import { PathDrawer } from "./path-drawer";
+import { PathDrawingTool } from "./path-drawing-tool";
 import { localStorageService } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,14 +18,22 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [gridSize, setGridSize] = useState("30x30");
+  const [isDrawingPath, setIsDrawingPath] = useState(false);
+  const [pathClickHandler, setPathClickHandler] = useState<((e: React.MouseEvent) => void) | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   const { data: plots = [] } = useQuery({
     queryKey: ['/api/farms', farmId, 'plots'],
-    queryFn: () => localStorageService.getPlotsByFarmId(farmId),
+    queryFn: async () => localStorageService.getPlotsByFarmId(farmId),
+  });
+
+  const { data: paths = [] } = useQuery({
+    queryKey: ['/api/farms', farmId, 'paths'],
+    queryFn: async () => localStorageService.getPathsByFarmId(farmId),
   });
 
   const updatePlotMutation = useMutation({
-    mutationFn: ({ plotId, updates }: { plotId: string; updates: Partial<Plot> }) =>
+    mutationFn: async ({ plotId, updates }: { plotId: string; updates: Partial<Plot> }) =>
       localStorageService.updatePlot(plotId, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/farms', farmId, 'plots'] });
@@ -31,12 +41,23 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
   });
 
   const deletePlotMutation = useMutation({
-    mutationFn: (plotId: string) => localStorageService.deletePlot(plotId),
+    mutationFn: async (plotId: string) => localStorageService.deletePlot(plotId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/farms', farmId, 'plots'] });
       toast({
         title: "Plot deleted",
         description: "The plot has been removed from your farm.",
+      });
+    },
+  });
+
+  const deletePathMutation = useMutation({
+    mutationFn: async (pathId: string) => localStorageService.deletePath(pathId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/farms', farmId, 'paths'] });
+      toast({
+        title: "Path deleted",
+        description: "The walking path has been removed from your farm.",
       });
     },
   });
@@ -68,11 +89,21 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
     deletePlotMutation.mutate(plotId);
   };
 
+  const handlePathDelete = (pathId: string) => {
+    deletePathMutation.mutate(pathId);
+  };
+
   const handleClearGrid = () => {
-    if (!confirm("Are you sure you want to clear all plots from the grid?")) {
+    const itemCount = plots.length + paths.length;
+    if (!confirm(`Are you sure you want to clear all ${itemCount} items (plots and paths) from the grid?`)) {
       return;
     }
     clearAllPlotsMutation.mutate();
+  };
+
+  const handleDrawingModeChange = (isDrawing: boolean, onGridClick?: (e: React.MouseEvent) => void) => {
+    setIsDrawingPath(isDrawing);
+    setPathClickHandler(onGridClick || null);
   };
 
   const gridSizeMap = {
@@ -107,16 +138,37 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
               size="sm"
               onClick={handleClearGrid}
               className="text-gray-500 hover:text-red-500"
-              disabled={plots.length === 0}
+              disabled={plots.length === 0 && paths.length === 0}
             >
               <Eraser className="w-4 h-4 mr-1" />
               Clear Grid
             </Button>
           </div>
         </div>
+
+        {/* Path Drawing Tool */}
+        <PathDrawingTool
+          farmId={farmId}
+          cellSize={currentGridConfig.cellSize}
+          gridWidth={currentGridConfig.width}
+          gridHeight={currentGridConfig.height}
+          onPathCreated={() => {
+            // Path created, component will automatically refresh via react-query
+          }}
+          onDrawingModeChange={handleDrawingModeChange}
+        />
         
         {/* Farm Grid Canvas */}
-        <div className="relative bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden" style={{ minHeight: "600px" }}>
+        <div 
+          ref={gridRef}
+          className={`relative bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden ${isDrawingPath ? "cursor-crosshair" : ""}`}
+          style={{ minHeight: "600px" }}
+          onClick={(e) => {
+            if (isDrawingPath && pathClickHandler) {
+              pathClickHandler(e);
+            }
+          }}
+        >
           {/* Grid Background Pattern */}
           <div 
             className="absolute inset-0 opacity-20" 
@@ -125,6 +177,18 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
               backgroundSize: `${currentGridConfig.cellSize}px ${currentGridConfig.cellSize}px`
             }}
           />
+
+          {/* Paths Layer (behind plots) */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            {paths.map((path) => (
+              <PathDrawer
+                key={path.id}
+                path={path}
+                cellSize={currentGridConfig.cellSize}
+                onDelete={handlePathDelete}
+              />
+            ))}
+          </svg>
           
           {/* Plots */}
           {plots.map((plot) => (
@@ -140,11 +204,11 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
           ))}
 
           {/* Empty State */}
-          {plots.length === 0 && (
+          {plots.length === 0 && paths.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center text-gray-500">
-                <p className="text-lg font-medium mb-2">No plots yet</p>
-                <p className="text-sm">Add plots to start designing your farm layout</p>
+                <p className="text-lg font-medium mb-2">No plots or paths yet</p>
+                <p className="text-sm">Add plots and walking paths to design your farm layout</p>
               </div>
             </div>
           )}

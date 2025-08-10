@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertFarmSchema, insertPlotSchema } from "@shared/schema";
+import { insertFarmSchema, insertPlotSchema, insertPathSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Farm routes
@@ -106,6 +106,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete plot" });
+    }
+  });
+
+  // Path routes
+  app.get("/api/farms/:farmId/paths", async (req, res) => {
+    try {
+      const paths = await storage.getPathsByFarmId(req.params.farmId);
+      res.json(paths);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch paths" });
+    }
+  });
+
+  app.post("/api/farms/:farmId/paths", async (req, res) => {
+    try {
+      const validatedData = insertPathSchema.parse({
+        ...req.body,
+        farmId: req.params.farmId,
+      });
+      const path = await storage.createPath(validatedData);
+      res.status(201).json(path);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid path data" });
+    }
+  });
+
+  app.put("/api/paths/:id", async (req, res) => {
+    try {
+      const validatedData = insertPathSchema.partial().parse(req.body);
+      const path = await storage.updatePath(req.params.id, validatedData);
+      if (!path) {
+        return res.status(404).json({ message: "Path not found" });
+      }
+      res.json(path);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid path data" });
+    }
+  });
+
+  app.delete("/api/paths/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deletePath(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Path not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete path" });
     }
   });
 

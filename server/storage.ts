@@ -1,4 +1,4 @@
-import { type Farm, type InsertFarm, type Plot, type InsertPlot } from "@shared/schema";
+import { type Farm, type InsertFarm, type Plot, type InsertPlot, type Path, type InsertPath } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -15,15 +15,24 @@ export interface IStorage {
   createPlot(plot: InsertPlot): Promise<Plot>;
   updatePlot(id: string, plot: Partial<InsertPlot>): Promise<Plot | undefined>;
   deletePlot(id: string): Promise<boolean>;
+
+  // Path operations
+  getPath(id: string): Promise<Path | undefined>;
+  getPathsByFarmId(farmId: string): Promise<Path[]>;
+  createPath(path: InsertPath): Promise<Path>;
+  updatePath(id: string, path: Partial<InsertPath>): Promise<Path | undefined>;
+  deletePath(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
   private farms: Map<string, Farm>;
   private plots: Map<string, Plot>;
+  private paths: Map<string, Path>;
 
   constructor() {
     this.farms = new Map();
     this.plots = new Map();
+    this.paths = new Map();
   }
 
   // Farm operations
@@ -37,7 +46,7 @@ export class MemStorage implements IStorage {
 
   async createFarm(insertFarm: InsertFarm): Promise<Farm> {
     const id = randomUUID();
-    const farm: Farm = { ...insertFarm, id };
+    const farm: Farm = { ...insertFarm, id, description: insertFarm.description || null };
     this.farms.set(id, farm);
     return farm;
   }
@@ -52,9 +61,12 @@ export class MemStorage implements IStorage {
   }
 
   async deleteFarm(id: string): Promise<boolean> {
-    // Also delete all plots for this farm
+    // Also delete all plots and paths for this farm
     const plots = Array.from(this.plots.values()).filter(plot => plot.farmId === id);
     plots.forEach(plot => this.plots.delete(plot.id));
+    
+    const paths = Array.from(this.paths.values()).filter(path => path.farmId === id);
+    paths.forEach(path => this.paths.delete(path.id));
     
     return this.farms.delete(id);
   }
@@ -70,7 +82,7 @@ export class MemStorage implements IStorage {
 
   async createPlot(insertPlot: InsertPlot): Promise<Plot> {
     const id = randomUUID();
-    const plot: Plot = { ...insertPlot, id };
+    const plot: Plot = { ...insertPlot, id, color: insertPlot.color || "green" };
     this.plots.set(id, plot);
     return plot;
   }
@@ -86,6 +98,35 @@ export class MemStorage implements IStorage {
 
   async deletePlot(id: string): Promise<boolean> {
     return this.plots.delete(id);
+  }
+
+  // Path operations
+  async getPath(id: string): Promise<Path | undefined> {
+    return this.paths.get(id);
+  }
+
+  async getPathsByFarmId(farmId: string): Promise<Path[]> {
+    return Array.from(this.paths.values()).filter(path => path.farmId === farmId);
+  }
+
+  async createPath(insertPath: InsertPath): Promise<Path> {
+    const id = randomUUID();
+    const path: Path = { ...insertPath, id };
+    this.paths.set(id, path);
+    return path;
+  }
+
+  async updatePath(id: string, pathUpdate: Partial<InsertPath>): Promise<Path | undefined> {
+    const existing = this.paths.get(id);
+    if (!existing) return undefined;
+    
+    const updated: Path = { ...existing, ...pathUpdate };
+    this.paths.set(id, updated);
+    return updated;
+  }
+
+  async deletePath(id: string): Promise<boolean> {
+    return this.paths.delete(id);
   }
 }
 

@@ -38,7 +38,7 @@ export function AddPlotModal({ isOpen, onClose, farmId, onSuccess }: AddPlotModa
   });
 
   const createPlotMutation = useMutation({
-    mutationFn: (plotData: InsertPlot) => localStorageService.createPlot(plotData),
+    mutationFn: async (plotData: InsertPlot) => localStorageService.createPlot(plotData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/farms', farmId, 'plots'] });
       toast({
