@@ -79,11 +79,13 @@ export function PathDrawingTool({
     resetDrawing();
   };
 
-  const handleGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleGridClick = (e: React.MouseEvent) => {
     console.log("Grid clicked, isDrawing:", isDrawing);
     if (!isDrawing) return;
 
-    const rect = e.currentTarget.getBoundingClientRect();
+    // Get the grid container element
+    const gridElement = e.currentTarget as HTMLElement;
+    const rect = gridElement.getBoundingClientRect();
     const x = Math.floor((e.clientX - rect.left) / cellSize);
     const y = Math.floor((e.clientY - rect.top) / cellSize);
 
