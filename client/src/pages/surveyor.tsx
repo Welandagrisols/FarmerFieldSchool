@@ -23,12 +23,12 @@ export function SurveyorPage() {
     enabled: !!params.id,
   });
 
-  const handleSaveMeasurements = async (measurements: any[]) => {
+  const handleSaveFieldMeasurement = async (measurement: any) => {
     try {
-      // Save measurements to the farm's layout data
+      // Save field measurement to the farm's layout data
       if (params.id) {
         const layoutData = {
-          measurements,
+          fieldMeasurement: measurement,
           surveyDate: new Date().toISOString(),
         };
         
@@ -36,9 +36,9 @@ export function SurveyorPage() {
           layoutData: JSON.stringify(layoutData)
         });
       }
-      console.log("Measurements saved successfully");
+      console.log("Field measurement saved successfully");
     } catch (error) {
-      console.error("Failed to save measurements:", error);
+      console.error("Failed to save field measurement:", error);
     }
   };
 
@@ -127,7 +127,7 @@ export function SurveyorPage() {
       {/* Surveyor Tool */}
       <SurveyorTool 
         farmId={farmId} 
-        onSaveMeasurements={handleSaveMeasurements}
+        onSaveFieldMeasurement={handleSaveFieldMeasurement}
       />
 
       {/* Help Section */}
@@ -141,19 +141,19 @@ export function SurveyorPage() {
             <ol>
               <li><strong>Set Scale:</strong> Enter the scale based on your actual field measurements (meters per pixel)</li>
               <li><strong>Place Reference Points:</strong> Click to place survey markers at key locations (corners, boundaries, structures)</li>
-              <li><strong>Create Measurements:</strong> Use the measure tool to calculate distances and angles between points</li>
-              <li><strong>Document Findings:</strong> All measurements are automatically recorded with precise coordinates</li>
-              <li><strong>Export Data:</strong> Save your survey data for integration with CAD software or regulatory submissions</li>
+              <li><strong>Mark Boundary Points:</strong> Walk the field perimeter and mark GPS coordinates at each corner</li>
+              <li><strong>Calculate Area:</strong> Automatic area calculation in acres and square meters</li>
+              <li><strong>Export Data:</strong> Save your field survey data with GPS coordinates and area measurements</li>
             </ol>
             
             <h4>Professional Features:</h4>
             <ul>
-              <li>Precise coordinate tracking</li>
-              <li>Distance and angle calculations</li>
-              <li>Multiple point types (markers, corners, reference points)</li>
-              <li>Scalable measurements</li>
-              <li>Professional data export</li>
-              <li>Integration with farm layout data</li>
+              <li>GPS-based boundary tracking</li>
+              <li>Automatic area calculation in acres and square meters</li>
+              <li>Perimeter measurement with distance calculations</li>
+              <li>High-accuracy positioning with error reporting</li>
+              <li>Professional field survey data export</li>
+              <li>Integration with farm project management</li>
             </ul>
 
             <p className="text-sm text-gray-600 mt-4">

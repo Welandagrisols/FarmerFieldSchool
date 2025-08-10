@@ -15,261 +15,257 @@ import {
   Plus,
   Minus,
   Navigation,
-  Calculator
+  Calculator,
+  Play,
+  Square,
+  Footprints
 } from "lucide-react";
 
-interface Point {
+interface BoundaryPoint {
   id: string;
-  x: number;
-  y: number;
+  latitude: number;
+  longitude: number;
   label: string;
-  type: 'marker' | 'corner' | 'reference';
+  timestamp: number;
+  accuracy?: number; // GPS accuracy in meters
 }
 
-interface Measurement {
+interface FieldMeasurement {
   id: string;
-  from: Point;
-  to: Point;
-  distance: number;
-  angle?: number;
+  points: BoundaryPoint[];
+  area: {
+    squareMeters: number;
+    acres: number;
+  };
+  perimeter: number; // in meters
+  completedAt: Date;
   label: string;
 }
 
 interface SurveyorToolProps {
   farmId: string;
-  gridSize?: number;
-  onSaveMeasurements?: (measurements: Measurement[]) => void;
+  onSaveFieldMeasurement?: (measurement: FieldMeasurement) => void;
 }
 
 export function SurveyorTool({ 
   farmId, 
-  gridSize = 50, 
-  onSaveMeasurements 
+  onSaveFieldMeasurement 
 }: SurveyorToolProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [points, setPoints] = useState<Point[]>([]);
-  const [measurements, setMeasurements] = useState<Measurement[]>([]);
-  const [selectedTool, setSelectedTool] = useState<'point' | 'measure' | 'move'>('point');
-  const [selectedPoints, setSelectedPoints] = useState<Point[]>([]);
-  const [scale, setScale] = useState(1); // meters per pixel
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [draggedPoint, setDraggedPoint] = useState<Point | null>(null);
-  
-  // Canvas dimensions
-  const canvasWidth = 800;
-  const canvasHeight = 600;
+  const [boundaryPoints, setBoundaryPoints] = useState<BoundaryPoint[]>([]);
+  const [fieldMeasurements, setFieldMeasurements] = useState<FieldMeasurement[]>([]);
+  const [isWalking, setIsWalking] = useState(false);
+  const [currentWalk, setCurrentWalk] = useState<BoundaryPoint[]>([]);
+  const [gpsSupported, setGpsSupported] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number, accuracy: number} | null>(null);
+  const watchIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    drawCanvas();
-  }, [points, measurements, selectedPoints]);
-
-  const drawCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-    
-    // Draw grid
-    drawGrid(ctx);
-    
-    // Draw measurements
-    measurements.forEach(measurement => drawMeasurement(ctx, measurement));
-    
-    // Draw points
-    points.forEach(point => drawPoint(ctx, point));
-    
-    // Draw selected points highlight
-    selectedPoints.forEach(point => drawPointHighlight(ctx, point));
-  };
-
-  const drawGrid = (ctx: CanvasRenderingContext2D) => {
-    ctx.strokeStyle = '#e5e5e5';
-    ctx.lineWidth = 0.5;
-    
-    // Vertical lines
-    for (let x = 0; x <= canvasWidth; x += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvasHeight);
-      ctx.stroke();
+    // Check GPS availability
+    if ("geolocation" in navigator) {
+      setGpsSupported(true);
+      // Get initial location
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCurrentLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy
+          });
+        },
+        (error) => console.log("Location access denied:", error),
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
     }
     
-    // Horizontal lines
-    for (let y = 0; y <= canvasHeight; y += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvasWidth, y);
-      ctx.stroke();
-    }
-  };
-
-  const drawPoint = (ctx: CanvasRenderingContext2D, point: Point) => {
-    const colors = {
-      marker: '#3b82f6',
-      corner: '#ef4444', 
-      reference: '#10b981'
-    };
-    
-    ctx.fillStyle = colors[point.type];
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    
-    // Draw point circle
-    ctx.beginPath();
-    ctx.arc(point.x, point.y, 6, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.stroke();
-    
-    // Draw label
-    ctx.fillStyle = '#374151';
-    ctx.font = '12px sans-serif';
-    ctx.fillText(point.label, point.x + 10, point.y - 10);
-  };
-
-  const drawPointHighlight = (ctx: CanvasRenderingContext2D, point: Point) => {
-    ctx.strokeStyle = '#fbbf24';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(point.x, point.y, 10, 0, 2 * Math.PI);
-    ctx.stroke();
-  };
-
-  const drawMeasurement = (ctx: CanvasRenderingContext2D, measurement: Measurement) => {
-    ctx.strokeStyle = '#7c3aed';
-    ctx.lineWidth = 2;
-    
-    // Draw line
-    ctx.beginPath();
-    ctx.moveTo(measurement.from.x, measurement.from.y);
-    ctx.lineTo(measurement.to.x, measurement.to.y);
-    ctx.stroke();
-    
-    // Draw distance label
-    const midX = (measurement.from.x + measurement.to.x) / 2;
-    const midY = (measurement.from.y + measurement.to.y) / 2;
-    
-    ctx.fillStyle = '#7c3aed';
-    ctx.font = 'bold 12px sans-serif';
-    ctx.fillRect(midX - 25, midY - 10, 50, 20);
-    ctx.fillStyle = '#fff';
-    ctx.fillText(`${measurement.distance.toFixed(1)}m`, midX - 20, midY + 3);
-  };
-
-  const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-
-    if (selectedTool === 'point') {
-      addPoint(x, y);
-    } else if (selectedTool === 'measure') {
-      handleMeasureClick(x, y);
-    }
-  };
-
-  const addPoint = (x: number, y: number) => {
-    const newPoint: Point = {
-      id: `point-${Date.now()}`,
-      x,
-      y,
-      label: `P${points.length + 1}`,
-      type: 'marker'
-    };
-    setPoints([...points, newPoint]);
-  };
-
-  const handleMeasureClick = (x: number, y: number) => {
-    // Find nearest point
-    const nearestPoint = findNearestPoint(x, y, 15);
-    if (!nearestPoint) return;
-
-    if (selectedPoints.length === 0) {
-      setSelectedPoints([nearestPoint]);
-    } else if (selectedPoints.length === 1) {
-      if (selectedPoints[0].id !== nearestPoint.id) {
-        createMeasurement(selectedPoints[0], nearestPoint);
-        setSelectedPoints([]);
+    return () => {
+      if (watchIdRef.current) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
       }
-    }
-  };
-
-  const findNearestPoint = (x: number, y: number, threshold: number): Point | null => {
-    let nearest: Point | null = null;
-    let minDistance = threshold;
-
-    points.forEach(point => {
-      const distance = Math.sqrt(Math.pow(point.x - x, 2) + Math.pow(point.y - y, 2));
-      if (distance < minDistance) {
-        nearest = point;
-        minDistance = distance;
-      }
-    });
-
-    return nearest;
-  };
-
-  const createMeasurement = (from: Point, to: Point) => {
-    const pixelDistance = Math.sqrt(
-      Math.pow(to.x - from.x, 2) + Math.pow(to.y - from.y, 2)
-    );
-    const realDistance = pixelDistance * scale;
-    
-    const angle = Math.atan2(to.y - from.y, to.x - from.x) * (180 / Math.PI);
-
-    const newMeasurement: Measurement = {
-      id: `measure-${Date.now()}`,
-      from,
-      to,
-      distance: realDistance,
-      angle,
-      label: `${from.label}-${to.label}`
     };
+  }, []);
 
-    setMeasurements([...measurements, newMeasurement]);
+  // Calculate distance between two GPS coordinates using Haversine formula
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371000; // Earth's radius in meters
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c;
   };
 
-  const calculateArea = (selectedPointsForArea: Point[]): number => {
-    if (selectedPointsForArea.length < 3) return 0;
+  // Calculate polygon area using shoelace formula (adapted for GPS coordinates)
+  const calculatePolygonArea = (points: BoundaryPoint[]): number => {
+    if (points.length < 3) return 0;
+    
+    // Convert to Cartesian coordinates for more accurate calculation
+    const avgLat = points.reduce((sum, p) => sum + p.latitude, 0) / points.length;
+    const avgLon = points.reduce((sum, p) => sum + p.longitude, 0) / points.length;
+    
+    const metersPerDegreeLat = 111320;
+    const metersPerDegreeLon = 111320 * Math.cos(avgLat * Math.PI / 180);
+    
+    const cartesianPoints = points.map(p => ({
+      x: (p.longitude - avgLon) * metersPerDegreeLon,
+      y: (p.latitude - avgLat) * metersPerDegreeLat
+    }));
     
     let area = 0;
-    for (let i = 0; i < selectedPointsForArea.length; i++) {
-      const j = (i + 1) % selectedPointsForArea.length;
-      area += selectedPointsForArea[i].x * selectedPointsForArea[j].y;
-      area -= selectedPointsForArea[j].x * selectedPointsForArea[i].y;
-    }
-    area = Math.abs(area) / 2;
-    return area * scale * scale; // Convert to real area
-  };
-
-  const clearAll = () => {
-    setPoints([]);
-    setMeasurements([]);
-    setSelectedPoints([]);
-  };
-
-  const exportMeasurements = () => {
-    if (onSaveMeasurements) {
-      onSaveMeasurements(measurements);
+    for (let i = 0; i < cartesianPoints.length; i++) {
+      const j = (i + 1) % cartesianPoints.length;
+      area += cartesianPoints[i].x * cartesianPoints[j].y;
+      area -= cartesianPoints[j].x * cartesianPoints[i].y;
     }
     
-    // Also create downloadable report
+    return Math.abs(area) / 2;
+  };
+
+  // Calculate perimeter of polygon
+  const calculatePerimeter = (points: BoundaryPoint[]): number => {
+    if (points.length < 2) return 0;
+    
+    let perimeter = 0;
+    for (let i = 0; i < points.length; i++) {
+      const current = points[i];
+      const next = points[(i + 1) % points.length];
+      perimeter += calculateDistance(current.latitude, current.longitude, next.latitude, next.longitude);
+    }
+    
+    return perimeter;
+  };
+
+  const startBoundaryWalk = () => {
+    if (!gpsSupported) {
+      alert("GPS is not available on this device");
+      return;
+    }
+    
+    setIsWalking(true);
+    setCurrentWalk([]);
+    
+    // Start GPS tracking with high accuracy
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        setCurrentLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          accuracy: position.coords.accuracy
+        });
+      },
+      (error) => {
+        console.error("GPS error:", error);
+        alert("GPS tracking error. Please ensure location services are enabled.");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 1000
+      }
+    );
+  };
+
+  const addBoundaryPoint = () => {
+    if (!currentLocation) {
+      alert("Current location not available. Please wait for GPS to lock.");
+      return;
+    }
+
+    const newPoint: BoundaryPoint = {
+      id: `bp-${Date.now()}`,
+      latitude: currentLocation.lat,
+      longitude: currentLocation.lng,
+      label: `Corner ${currentWalk.length + 1}`,
+      timestamp: Date.now(),
+      accuracy: currentLocation.accuracy
+    };
+
+    setCurrentWalk([...currentWalk, newPoint]);
+  };
+
+  const completeBoundaryWalk = () => {
+    if (currentWalk.length < 3) {
+      alert("You need at least 3 points to define a boundary area.");
+      return;
+    }
+
+    const area = calculatePolygonArea(currentWalk);
+    const perimeter = calculatePerimeter(currentWalk);
+
+    const measurement: FieldMeasurement = {
+      id: `field-${Date.now()}`,
+      points: currentWalk,
+      area: {
+        squareMeters: area,
+        acres: area / 4047 // Convert square meters to acres
+      },
+      perimeter,
+      completedAt: new Date(),
+      label: `Field Survey ${fieldMeasurements.length + 1}`
+    };
+
+    setFieldMeasurements([...fieldMeasurements, measurement]);
+    setBoundaryPoints([...boundaryPoints, ...currentWalk]);
+    
+    // Stop GPS tracking
+    if (watchIdRef.current) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    
+    setIsWalking(false);
+    setCurrentWalk([]);
+    
+    if (onSaveFieldMeasurement) {
+      onSaveFieldMeasurement(measurement);
+    }
+  };
+
+  const cancelBoundaryWalk = () => {
+    if (watchIdRef.current) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    
+    setIsWalking(false);
+    setCurrentWalk([]);
+  };
+
+  const clearAllMeasurements = () => {
+    setBoundaryPoints([]);
+    setFieldMeasurements([]);
+    setCurrentWalk([]);
+  };
+
+  const exportFieldData = () => {
     const report = {
       farmId,
       timestamp: new Date().toISOString(),
-      scale: scale,
-      points: points,
-      measurements: measurements.map(m => ({
+      fieldMeasurements: fieldMeasurements.map(m => ({
         ...m,
-        distance: parseFloat(m.distance.toFixed(2)),
-        angle: m.angle ? parseFloat(m.angle.toFixed(1)) : undefined
-      }))
+        area: {
+          squareMeters: parseFloat(m.area.squareMeters.toFixed(2)),
+          acres: parseFloat(m.area.acres.toFixed(4))
+        },
+        perimeter: parseFloat(m.perimeter.toFixed(2)),
+        points: m.points.map(p => ({
+          ...p,
+          latitude: parseFloat(p.latitude.toFixed(8)),
+          longitude: parseFloat(p.longitude.toFixed(8))
+        }))
+      })),
+      summary: {
+        totalFields: fieldMeasurements.length,
+        totalArea: {
+          squareMeters: fieldMeasurements.reduce((sum, m) => sum + m.area.squareMeters, 0),
+          acres: fieldMeasurements.reduce((sum, m) => sum + m.area.acres, 0)
+        }
+      }
     };
 
     const blob = new Blob([JSON.stringify(report, null, 2)], { 
@@ -278,137 +274,193 @@ export function SurveyorTool({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `farm-survey-${farmId}-${Date.now()}.json`;
+    a.download = `field-survey-${farmId}-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   return (
     <div className="w-full space-y-4">
-      {/* Toolbar */}
+      {/* GPS Status & Controls */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Ruler className="h-5 w-5" />
-            Surveyor Tools
+            <Footprints className="h-5 w-5" />
+            Field Boundary Surveyor
+            {gpsSupported ? (
+              <Badge variant="secondary" className="ml-2">GPS Ready</Badge>
+            ) : (
+              <Badge variant="destructive" className="ml-2">No GPS</Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2 mb-4">
-            <Button
-              variant={selectedTool === 'point' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedTool('point')}
-            >
-              <MapPin className="h-4 w-4 mr-2" />
-              Add Points
-            </Button>
-            <Button
-              variant={selectedTool === 'measure' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedTool('measure')}
-            >
-              <Ruler className="h-4 w-4 mr-2" />
-              Measure
-            </Button>
-            <Button
-              variant={selectedTool === 'move' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedTool('move')}
-            >
-              <Move className="h-4 w-4 mr-2" />
-              Move
-            </Button>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <Label>Current Location</Label>
+              <div className="text-sm">
+                {currentLocation ? (
+                  <div>
+                    <div>Lat: {currentLocation.lat.toFixed(6)}</div>
+                    <div>Lng: {currentLocation.lng.toFixed(6)}</div>
+                    <div className="text-xs text-gray-500">
+                      ±{currentLocation.accuracy.toFixed(1)}m accuracy
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-gray-500">Getting location...</div>
+                )}
+              </div>
+            </div>
+            
+            <div>
+              <Label>Current Walk</Label>
+              <div className="text-lg font-semibold">
+                {currentWalk.length} {currentWalk.length === 1 ? 'point' : 'points'}
+              </div>
+              <div className="text-xs text-gray-500">
+                {currentWalk.length >= 3 ? 'Ready to complete' : 'Need at least 3 points'}
+              </div>
+            </div>
+            
+            <div>
+              <Label>Completed Fields</Label>
+              <div className="text-lg font-semibold">{fieldMeasurements.length}</div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {!isWalking ? (
+              <Button onClick={startBoundaryWalk} disabled={!gpsSupported}>
+                <Play className="h-4 w-4 mr-2" />
+                Start Boundary Walk
+              </Button>
+            ) : (
+              <>
+                <Button 
+                  onClick={addBoundaryPoint}
+                  disabled={!currentLocation}
+                  variant="default"
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Mark Corner ({currentWalk.length + 1})
+                </Button>
+                <Button 
+                  onClick={completeBoundaryWalk}
+                  disabled={currentWalk.length < 3}
+                  variant="default"
+                >
+                  <Square className="h-4 w-4 mr-2" />
+                  Complete Boundary
+                </Button>
+                <Button 
+                  onClick={cancelBoundaryWalk}
+                  variant="outline"
+                >
+                  Cancel Walk
+                </Button>
+              </>
+            )}
+            
             <Separator orientation="vertical" className="h-6" />
-            <Button variant="outline" size="sm" onClick={clearAll}>
+            
+            <Button variant="outline" size="sm" onClick={clearAllMeasurements}>
               <RotateCcw className="h-4 w-4 mr-2" />
               Clear All
             </Button>
-            <Button variant="outline" size="sm" onClick={exportMeasurements}>
+            <Button variant="outline" size="sm" onClick={exportFieldData}>
               <Save className="h-4 w-4 mr-2" />
-              Export
+              Export Field Data
             </Button>
           </div>
+        </CardContent>
+      </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="scale">Scale (meters per pixel)</Label>
-              <Input
-                id="scale"
-                type="number"
-                value={scale}
-                onChange={(e) => setScale(parseFloat(e.target.value) || 1)}
-                step="0.1"
-                min="0.1"
-              />
-            </div>
-            <div>
-              <Label>Selected Points</Label>
-              <div className="text-sm text-gray-600">
-                {selectedPoints.length > 0 ? 
-                  selectedPoints.map(p => p.label).join(', ') : 
-                  'None'
-                }
+      {/* Current Walk Progress */}
+      {isWalking && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Navigation className="h-5 w-5" />
+              Walking Instructions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
+                <div className="font-medium text-blue-900 dark:text-blue-100">
+                  Step {currentWalk.length + 1}: {currentWalk.length === 0 ? 'Mark Starting Point' : 'Mark Next Corner'}
+                </div>
+                <div className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                  {currentWalk.length === 0 
+                    ? "Walk to the starting corner of your field boundary and tap 'Mark Corner'"
+                    : "Walk to the next corner of your field boundary and tap 'Mark Corner'"
+                  }
+                </div>
               </div>
+              
+              {currentWalk.length > 0 && (
+                <div className="text-sm">
+                  <strong>Marked corners:</strong>
+                  <div className="mt-1 space-y-1">
+                    {currentWalk.map((point, index) => (
+                      <div key={point.id} className="flex justify-between text-xs">
+                        <span>{point.label}</span>
+                        <span>{point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-            <div>
-              <Label>Total Points</Label>
-              <div className="text-lg font-semibold">{points.length}</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Canvas */}
-      <Card>
-        <CardContent className="p-4">
-          <canvas
-            ref={canvasRef}
-            width={canvasWidth}
-            height={canvasHeight}
-            onClick={handleCanvasClick}
-            className="border border-gray-300 rounded cursor-crosshair"
-            style={{ maxWidth: '100%', height: 'auto' }}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Measurements Panel */}
+      {/* Field Measurements Results */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calculator className="h-5 w-5" />
-              Measurements
+              Field Measurements
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {measurements.map(measurement => (
-                <div key={measurement.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                  <div>
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {fieldMeasurements.map(measurement => (
+                <div key={measurement.id} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className="flex justify-between items-start mb-2">
                     <div className="font-medium">{measurement.label}</div>
-                    <div className="text-sm text-gray-600">
-                      Distance: {measurement.distance.toFixed(2)}m
-                      {measurement.angle && (
-                        <span className="ml-2">
-                          Angle: {measurement.angle.toFixed(1)}°
-                        </span>
-                      )}
+                    <Badge variant="secondary">
+                      {measurement.points.length} corners
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="font-medium text-green-700 dark:text-green-300">
+                        Area: {measurement.area.acres.toFixed(2)} acres
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">
+                        {measurement.area.squareMeters.toFixed(0)} m²
+                      </span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Perimeter: {measurement.perimeter.toFixed(1)} meters
+                      </span>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setMeasurements(measurements.filter(m => m.id !== measurement.id))}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
+                  <div className="text-xs text-gray-500 mt-2">
+                    Completed: {measurement.completedAt.toLocaleString()}
+                  </div>
                 </div>
               ))}
-              {measurements.length === 0 && (
-                <div className="text-center py-4 text-gray-500">
-                  No measurements yet. Select two points to create a measurement.
+              {fieldMeasurements.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No field measurements yet. Start a boundary walk to measure your first field.
                 </div>
               )}
             </div>
@@ -419,39 +471,29 @@ export function SurveyorTool({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="h-5 w-5" />
-              Survey Points
+              Boundary Points
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {points.map(point => (
-                <div key={point.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                  <div>
+              {boundaryPoints.map(point => (
+                <div key={point.id} className="p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                  <div className="flex justify-between items-center">
                     <div className="font-medium">{point.label}</div>
-                    <div className="text-sm text-gray-600">
-                      X: {point.x.toFixed(1)}, Y: {point.y.toFixed(1)}
-                    </div>
+                    <Badge variant="outline">GPS</Badge>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge 
-                      variant={point.type === 'marker' ? 'default' : 
-                               point.type === 'corner' ? 'destructive' : 'secondary'}
-                    >
-                      {point.type}
-                    </Badge>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setPoints(points.filter(p => p.id !== point.id))}
-                    >
-                      <Minus className="h-4 w-4" />
-                    </Button>
+                  <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                    <div>Lat: {point.latitude.toFixed(6)}</div>
+                    <div>Lng: {point.longitude.toFixed(6)}</div>
+                    {point.accuracy && (
+                      <div className="text-gray-500">±{point.accuracy.toFixed(1)}m</div>
+                    )}
                   </div>
                 </div>
               ))}
-              {points.length === 0 && (
-                <div className="text-center py-4 text-gray-500">
-                  No survey points yet. Click on the canvas to add points.
+              {boundaryPoints.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No boundary points yet. Start a boundary walk to mark GPS locations.
                 </div>
               )}
             </div>
@@ -459,18 +501,72 @@ export function SurveyorTool({
         </Card>
       </div>
 
-      {/* Instructions */}
+      {/* Summary Statistics */}
+      {fieldMeasurements.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calculator className="h-5 w-5" />
+              Survey Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <div className="text-2xl font-bold text-green-700 dark:text-green-300">
+                  {fieldMeasurements.reduce((sum, m) => sum + m.area.acres, 0).toFixed(2)}
+                </div>
+                <div className="text-sm text-green-600 dark:text-green-400">Total Acres</div>
+              </div>
+              
+              <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                  {fieldMeasurements.length}
+                </div>
+                <div className="text-sm text-blue-600 dark:text-blue-400">Fields Surveyed</div>
+              </div>
+              
+              <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+                  {boundaryPoints.length}
+                </div>
+                <div className="text-sm text-purple-600 dark:text-purple-400">GPS Points</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Field Surveyor Instructions */}
       <Card>
-        <CardContent className="p-4">
-          <div className="text-sm text-gray-600">
-            <strong>Instructions:</strong>
-            <ul className="mt-2 space-y-1">
-              <li>• Click "Add Points" and click on the canvas to place survey points</li>
-              <li>• Click "Measure" and select two points to create distance measurements</li>
-              <li>• Adjust the scale to match your actual field measurements</li>
-              <li>• Use "Export" to save your survey data</li>
-              <li>• Selected points are highlighted in yellow</li>
+        <CardHeader>
+          <CardTitle>How to Use the Field Surveyor</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="prose prose-sm max-w-none">
+            <h4>Step-by-Step Process:</h4>
+            <ol className="space-y-2">
+              <li><strong>Start Boundary Walk:</strong> Click "Start Boundary Walk" to begin GPS tracking</li>
+              <li><strong>Walk the Perimeter:</strong> Walk to each corner of your field boundary</li>
+              <li><strong>Mark Corners:</strong> At each corner, tap "Mark Corner" to record the GPS location</li>
+              <li><strong>Complete the Boundary:</strong> After marking at least 3 corners, tap "Complete Boundary"</li>
+              <li><strong>View Results:</strong> Area in acres and square meters will be automatically calculated</li>
+            </ol>
+            
+            <h4>GPS Accuracy Tips:</h4>
+            <ul className="space-y-1">
+              <li>• Ensure location services are enabled for best accuracy</li>
+              <li>• Wait for GPS to stabilize before marking corners (±5m accuracy is good)</li>
+              <li>• Avoid surveying during heavy cloud cover or near tall buildings</li>
+              <li>• Walk slowly and pause at each corner for accurate positioning</li>
             </ul>
+
+            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded border-l-4 border-amber-500">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Professional Note:</strong> This tool provides field measurements for farm planning purposes. 
+                For legal surveys or property boundaries, consult a licensed surveyor.
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
