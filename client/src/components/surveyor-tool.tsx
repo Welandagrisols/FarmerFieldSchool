@@ -142,9 +142,13 @@ export function SurveyorTool({
 
   const startBoundaryWalk = () => {
     if (!gpsSupported) {
-      alert("GPS is not available on this device");
+      alert("📱 GPS is not available on this device. Please use a device with location services.");
       return;
     }
+    
+    const confirmed = confirm(`🚶‍♂️ Ready to start boundary walk?\n\nYou'll walk around your field boundary and mark each corner with GPS coordinates.\n\n✅ Make sure location services are enabled\n✅ Start from any corner of your field\n✅ Walk the perimeter and mark each corner\n✅ Return to complete the boundary\n\nStart now?`);
+    
+    if (!confirmed) return;
     
     setIsWalking(true);
     setCurrentWalk([]);
@@ -160,20 +164,28 @@ export function SurveyorTool({
       },
       (error) => {
         console.error("GPS error:", error);
-        alert("GPS tracking error. Please ensure location services are enabled.");
+        alert("🚨 GPS tracking error. Please ensure location services are enabled in your device settings and try again.");
+        setIsWalking(false);
       },
       {
         enableHighAccuracy: true,
-        timeout: 5000,
+        timeout: 10000,
         maximumAge: 1000
       }
     );
+
+    alert("📍 GPS tracking started! Walk to your first field corner and wait for GPS to stabilize before marking.");
   };
 
   const addBoundaryPoint = () => {
     if (!currentLocation) {
-      alert("Current location not available. Please wait for GPS to lock.");
+      alert("📍 GPS location not available. Please wait for GPS to lock and try again.");
       return;
+    }
+
+    if (currentLocation.accuracy > 50) {
+      const proceed = confirm(`⚠️ GPS accuracy is ±${currentLocation.accuracy.toFixed(1)}m. For better results, wait for better accuracy (±10m or better). Mark this corner anyway?`);
+      if (!proceed) return;
     }
 
     const newPoint: BoundaryPoint = {
@@ -186,11 +198,22 @@ export function SurveyorTool({
     };
 
     setCurrentWalk([...currentWalk, newPoint]);
+
+    // Provide feedback based on progress
+    if (currentWalk.length === 0) {
+      alert("✅ First corner marked! Walk to the next corner of your field boundary.");
+    } else if (currentWalk.length === 1) {
+      alert("✅ Second corner marked! Walk to the third corner to continue.");
+    } else if (currentWalk.length === 2) {
+      alert("✅ Third corner marked! You can now complete the boundary or add more corners for complex shapes.");
+    } else {
+      alert(`✅ Corner ${currentWalk.length + 1} marked! Continue to the next corner or complete the boundary.`);
+    }
   };
 
   const completeBoundaryWalk = () => {
     if (currentWalk.length < 3) {
-      alert("You need at least 3 points to define a boundary area.");
+      alert("⚠️ You need at least 3 corners to define a field boundary area.");
       return;
     }
 
@@ -224,6 +247,9 @@ export function SurveyorTool({
     if (onSaveFieldMeasurement) {
       onSaveFieldMeasurement(measurement);
     }
+
+    // Show results
+    alert(`🎉 Boundary completed!\n\n📐 Area: ${measurement.area.acres.toFixed(2)} acres (${measurement.area.squareMeters.toFixed(0)} m²)\n📏 Perimeter: ${measurement.perimeter.toFixed(1)} meters\n📍 Corners marked: ${measurement.points.length}\n\nThe polygon has been closed automatically by connecting the last point back to the first point.`);
   };
 
   const cancelBoundaryWalk = () => {
@@ -341,18 +367,34 @@ export function SurveyorTool({
                   onClick={addBoundaryPoint}
                   disabled={!currentLocation}
                   variant="default"
+                  size="lg"
+                  className="text-lg py-3 px-6"
                 >
-                  <MapPin className="h-4 w-4 mr-2" />
+                  <MapPin className="h-5 w-5 mr-2" />
                   Mark Corner ({currentWalk.length + 1})
                 </Button>
-                <Button 
-                  onClick={completeBoundaryWalk}
-                  disabled={currentWalk.length < 3}
-                  variant="default"
-                >
-                  <Square className="h-4 w-4 mr-2" />
-                  Complete Boundary
-                </Button>
+                {currentWalk.length >= 3 && (
+                  <Button 
+                    onClick={completeBoundaryWalk}
+                    variant="default"
+                    size="lg"
+                    className="text-lg py-3 px-6 bg-green-600 hover:bg-green-700"
+                  >
+                    <Square className="h-5 w-5 mr-2" />
+                    Complete Boundary & Calculate Area
+                  </Button>
+                )}
+                {currentWalk.length >= 1 && currentWalk.length < 3 && (
+                  <Button 
+                    disabled
+                    variant="outline"
+                    size="lg"
+                    className="text-lg py-3 px-6"
+                  >
+                    <Square className="h-5 w-5 mr-2" />
+                    Need {3 - currentWalk.length} More Corner{3 - currentWalk.length > 1 ? 's' : ''}
+                  </Button>
+                )}
                 <Button 
                   onClick={cancelBoundaryWalk}
                   variant="outline"
@@ -389,27 +431,68 @@ export function SurveyorTool({
             <div className="space-y-3">
               <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-500">
                 <div className="font-medium text-blue-900 dark:text-blue-100">
-                  Step {currentWalk.length + 1}: {currentWalk.length === 0 ? 'Mark Starting Point' : 'Mark Next Corner'}
+                  Step {currentWalk.length + 1}: {
+                    currentWalk.length === 0 ? 'Mark Starting Corner' : 
+                    currentWalk.length === 1 ? 'Mark Second Corner' : 
+                    currentWalk.length === 2 ? 'Mark Third Corner' : 
+                    `Mark Corner ${currentWalk.length + 1}`
+                  }
                 </div>
                 <div className="text-sm text-blue-700 dark:text-blue-300 mt-1">
                   {currentWalk.length === 0 
-                    ? "Walk to the starting corner of your field boundary and tap 'Mark Corner'"
-                    : "Walk to the next corner of your field boundary and tap 'Mark Corner'"
+                    ? "🚶‍♂️ Walk to the first corner of your field boundary and tap 'Mark Corner (1)'" 
+                    : currentWalk.length === 1
+                    ? "🚶‍♂️ Walk to the second corner of your field boundary and tap 'Mark Corner (2)'"
+                    : currentWalk.length === 2
+                    ? "🚶‍♂️ Walk to the third corner and tap 'Mark Corner (3)' - You'll then be able to complete the boundary"
+                    : currentWalk.length >= 3
+                    ? "🚶‍♂️ Walk to the next corner and tap 'Mark Corner' or tap 'Complete Boundary' to finish"
+                    : "🚶‍♂️ Walk to the next corner of your field boundary and tap 'Mark Corner'"
                   }
+                </div>
+                
+                {/* GPS Status Indicator */}
+                <div className="mt-2 flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    !currentLocation ? 'bg-red-500 animate-pulse' :
+                    currentLocation.accuracy > 20 ? 'bg-yellow-500' :
+                    currentLocation.accuracy > 10 ? 'bg-orange-500' :
+                    'bg-green-500'
+                  }`}></div>
+                  <span className="text-xs text-blue-600 dark:text-blue-400">
+                    {!currentLocation ? 'Waiting for GPS...' :
+                     `GPS Ready (±${currentLocation.accuracy.toFixed(1)}m accuracy)`
+                    }
+                  </span>
                 </div>
               </div>
               
               {currentWalk.length > 0 && (
                 <div className="text-sm">
                   <strong>Marked corners:</strong>
-                  <div className="mt-1 space-y-1">
+                  <div className="mt-1 space-y-2">
                     {currentWalk.map((point, index) => (
-                      <div key={point.id} className="flex justify-between text-xs">
-                        <span>{point.label}</span>
-                        <span>{point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}</span>
+                      <div key={point.id} className="flex justify-between items-center p-2 bg-white dark:bg-gray-700 rounded text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="font-medium">{point.label}</span>
+                        </div>
+                        <div className="text-right">
+                          <div>{point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}</div>
+                          <div className="text-gray-500">±{point.accuracy?.toFixed(1)}m</div>
+                        </div>
                       </div>
                     ))}
                   </div>
+                  
+                  {/* Progress indicator */}
+                  {currentWalk.length >= 3 && (
+                    <div className="mt-3 p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
+                      <div className="text-sm font-medium text-green-700 dark:text-green-300">
+                        🎯 Ready to complete! The boundary will automatically connect back to Corner 1.
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
