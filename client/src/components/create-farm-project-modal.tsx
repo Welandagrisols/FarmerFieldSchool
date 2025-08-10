@@ -75,7 +75,7 @@ export function CreateFarmProjectModal({
     onSuccess: (data: any) => {
       toast({
         title: "Success!",
-        description: `Farm project has been created successfully.`,
+        description: `Farm project "${data.name}" has been created successfully.`,
       });
       reset();
       setSelectedCrops([]);

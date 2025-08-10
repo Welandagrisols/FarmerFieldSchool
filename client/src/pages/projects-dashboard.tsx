@@ -40,6 +40,12 @@ export function ProjectsDashboard() {
     },
   });
 
+  const handleCreateSuccess = () => {
+    // Refresh the projects list after creation
+    queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+    setIsCreateModalOpen(false);
+  };
+
   const handleDeleteProject = (projectId: string, projectName: string) => {
     if (confirm(`Are you sure you want to delete "${projectName}"? This action cannot be undone.`)) {
       deleteProjectMutation.mutate(projectId);
