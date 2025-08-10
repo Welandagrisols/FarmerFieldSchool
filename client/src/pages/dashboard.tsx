@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Sprout, Plus, LogOut } from "lucide-react";
 import { Farm } from "@shared/schema";
 import { FarmSidebar } from "@/components/farm-sidebar";
@@ -39,6 +40,11 @@ export default function Dashboard() {
           </div>
           
           <div className="flex items-center space-x-4">
+            <Link href="/projects">
+              <Button variant="outline">
+                View All Projects
+              </Button>
+            </Link>
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 farm-green rounded-full flex items-center justify-center">
                 <span className="text-white text-sm font-medium">F</span>
