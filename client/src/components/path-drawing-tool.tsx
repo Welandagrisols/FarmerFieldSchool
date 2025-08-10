@@ -35,7 +35,7 @@ export function PathDrawingTool({
   const [pathPoints, setPathPoints] = useState<Point[]>([]);
   const [pathName, setPathName] = useState("Walking Path");
   const [pathColor, setPathColor] = useState("brown");
-  const [pathWidth, setPathWidth] = useState(3);
+  const [pathWidth, setPathWidth] = useState(1); // Minimum 1 meter width
   
   const createPathMutation = useMutation({
     mutationFn: (pathData: any) => localStorageService.createPath(pathData),
@@ -200,9 +200,9 @@ export function PathDrawingTool({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="2">Narrow (2)</SelectItem>
-                <SelectItem value="3">Medium (3)</SelectItem>
-                <SelectItem value="4">Wide (4)</SelectItem>
+                <SelectItem value="1">Standard (1m)</SelectItem>
+                <SelectItem value="2">Wide (2m)</SelectItem>
+                <SelectItem value="3">Extra Wide (3m)</SelectItem>
               </SelectContent>
             </Select>
             
@@ -217,7 +217,7 @@ export function PathDrawingTool({
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-gray-600">
-              Click on the grid to add path points. You need at least 2 points to create a path.
+              Click on the grid to add path points. You need at least 2 points to create a walking path (minimum 1m width).
             </p>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-500">
