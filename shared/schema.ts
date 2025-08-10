@@ -53,6 +53,39 @@ export const paths = pgTable("paths", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Seasonal baseline data for previous farming seasons
+export const seasonalData = pgTable("seasonal_data", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  farmId: varchar("farm_id").notNull(),
+  seasonName: text("season_name").notNull(), // e.g., "Previous Season 1", "Previous Season 2"
+  year: integer("year").notNull(),
+  cropGrown: text("crop_grown").notNull(),
+  landAreaAcres: decimal("land_area_acres", { precision: 10, scale: 2 }).notNull(),
+  landAreaM2: decimal("land_area_m2", { precision: 12, scale: 2 }).notNull(),
+  seedVariety: text("seed_variety").notNull(), // e.g., "DK777", "HB 6213"
+  
+  // Basal fertilizer application
+  basalFertilizerType: text("basal_fertilizer_type"), // e.g., "DAP", "NPK 17:17:17", "Mavuno planting"
+  basalFertilizerAmountBags: decimal("basal_fertilizer_amount_bags", { precision: 8, scale: 2 }),
+  basalFertilizerAmountKgs: decimal("basal_fertilizer_amount_kgs", { precision: 10, scale: 2 }),
+  
+  // Top dressing fertilizer application
+  topDressingFertilizerType: text("top_dressing_fertilizer_type"), // e.g., "CAN", "Urea"
+  topDressingFertilizerAmountBags: decimal("top_dressing_fertilizer_amount_bags", { precision: 8, scale: 2 }),
+  topDressingFertilizerAmountKgs: decimal("top_dressing_fertilizer_amount_kgs", { precision: 10, scale: 2 }),
+  
+  // Yield data
+  yieldBags: decimal("yield_bags", { precision: 10, scale: 2 }),
+  yieldKgs: decimal("yield_kgs", { precision: 12, scale: 2 }),
+  
+  // Calculated productivity metrics
+  productivityKgsPerAcre: decimal("productivity_kgs_per_acre", { precision: 10, scale: 4 }),
+  productivityKgsPerM2: decimal("productivity_kgs_per_m2", { precision: 8, scale: 6 }),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Schema validation for user input
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -82,6 +115,24 @@ export const insertPathSchema = createInsertSchema(paths).omit({
   createdAt: true,
 });
 
+export const insertSeasonalDataSchema = createInsertSchema(seasonalData).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  productivityKgsPerAcre: true,
+  productivityKgsPerM2: true,
+}).extend({
+  year: z.number().int().min(1900).max(new Date().getFullYear()),
+  landAreaAcres: z.number().positive(),
+  landAreaM2: z.number().positive(),
+  basalFertilizerAmountBags: z.number().nonnegative().optional().nullable(),
+  basalFertilizerAmountKgs: z.number().nonnegative().optional().nullable(),
+  topDressingFertilizerAmountBags: z.number().nonnegative().optional().nullable(),
+  topDressingFertilizerAmountKgs: z.number().nonnegative().optional().nullable(),
+  yieldBags: z.number().nonnegative().optional().nullable(),
+  yieldKgs: z.number().nonnegative().optional().nullable(),
+});
+
 // TypeScript types for the application
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -91,3 +142,5 @@ export type InsertPlot = z.infer<typeof insertPlotSchema>;
 export type Plot = typeof plots.$inferSelect;
 export type InsertPath = z.infer<typeof insertPathSchema>;
 export type Path = typeof paths.$inferSelect;
+export type InsertSeasonalData = z.infer<typeof insertSeasonalDataSchema>;
+export type SeasonalData = typeof seasonalData.$inferSelect;

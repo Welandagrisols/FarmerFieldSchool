@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertFarmSchema, insertPlotSchema, insertPathSchema, insertUserSchema } from "@shared/schema";
+import { insertFarmSchema, insertPlotSchema, insertPathSchema, insertUserSchema, insertSeasonalDataSchema } from "@shared/schema";
 
 // Simple session interface for authentication
 // In production, this would integrate with Supabase Auth or similar
@@ -318,6 +318,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete path" });
+    }
+  });
+
+  // Seasonal Data routes for baseline data collection
+  app.get("/api/farms/:farmId/seasonal-data", async (req, res) => {
+    try {
+      const seasonalData = await storage.getSeasonalDataByFarmId(req.params.farmId);
+      res.json(seasonalData);
+    } catch (error) {
+      console.error("Error fetching seasonal data:", error);
+      res.status(500).json({ message: "Failed to fetch seasonal data" });
+    }
+  });
+
+  app.post("/api/farms/:farmId/seasonal-data", async (req, res) => {
+    try {
+      const validatedData = insertSeasonalDataSchema.parse({
+        ...req.body,
+        farmId: req.params.farmId,
+      });
+      const seasonalData = await storage.createSeasonalData(validatedData);
+      res.status(201).json(seasonalData);
+    } catch (error) {
+      console.error("Error creating seasonal data:", error);
+      res.status(400).json({ 
+        message: "Invalid seasonal data", 
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.get("/api/seasonal-data/:id", async (req, res) => {
+    try {
+      const seasonalData = await storage.getSeasonalData(req.params.id);
+      if (!seasonalData) {
+        return res.status(404).json({ message: "Seasonal data not found" });
+      }
+      res.json(seasonalData);
+    } catch (error) {
+      console.error("Error fetching seasonal data:", error);
+      res.status(500).json({ message: "Failed to fetch seasonal data" });
+    }
+  });
+
+  app.put("/api/seasonal-data/:id", async (req, res) => {
+    try {
+      const validatedData = insertSeasonalDataSchema.partial().parse(req.body);
+      const seasonalData = await storage.updateSeasonalData(req.params.id, validatedData);
+      if (!seasonalData) {
+        return res.status(404).json({ message: "Seasonal data not found" });
+      }
+      res.json(seasonalData);
+    } catch (error) {
+      console.error("Error updating seasonal data:", error);
+      res.status(400).json({ 
+        message: "Invalid seasonal data", 
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.delete("/api/seasonal-data/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteSeasonalData(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Seasonal data not found" });
+      }
+      res.json({ message: "Seasonal data deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting seasonal data:", error);
+      res.status(500).json({ message: "Failed to delete seasonal data" });
     }
   });
 

@@ -1,4 +1,4 @@
-import { type Farm, type InsertFarm, type Plot, type InsertPlot, type Path, type InsertPath, type User, type InsertUser, farms, plots, paths, users } from "@shared/schema";
+import { type Farm, type InsertFarm, type Plot, type InsertPlot, type Path, type InsertPath, type User, type InsertUser, type SeasonalData, type InsertSeasonalData, farms, plots, paths, users, seasonalData } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { eq, and } from "drizzle-orm";
@@ -42,6 +42,13 @@ export interface IStorage {
   createPath(path: InsertPath): Promise<Path>;
   updatePath(id: string, path: Partial<InsertPath>): Promise<Path | undefined>;
   deletePath(id: string): Promise<boolean>;
+
+  // Seasonal data operations for baseline data collection
+  getSeasonalData(id: string): Promise<SeasonalData | undefined>;
+  getSeasonalDataByFarmId(farmId: string): Promise<SeasonalData[]>;
+  createSeasonalData(seasonalData: InsertSeasonalData): Promise<SeasonalData>;
+  updateSeasonalData(id: string, seasonalData: Partial<InsertSeasonalData>): Promise<SeasonalData | undefined>;
+  deleteSeasonalData(id: string): Promise<boolean>;
 }
 
 // Database storage implementation using Drizzle ORM and Supabase
@@ -294,6 +301,92 @@ export class DatabaseStorage implements IStorage {
       return false;
     }
   }
+
+  // Seasonal data operations for baseline data collection
+  async getSeasonalData(id: string): Promise<SeasonalData | undefined> {
+    try {
+      const result = await db.select().from(seasonalData).where(eq(seasonalData.id, id)).limit(1);
+      return result[0];
+    } catch (error) {
+      console.error("Error fetching seasonal data:", error);
+      return undefined;
+    }
+  }
+
+  async getSeasonalDataByFarmId(farmId: string): Promise<SeasonalData[]> {
+    try {
+      const result = await db.select().from(seasonalData).where(eq(seasonalData.farmId, farmId));
+      return result;
+    } catch (error) {
+      console.error("Error fetching seasonal data:", error);
+      return [];
+    }
+  }
+
+  async createSeasonalData(insertSeasonalData: InsertSeasonalData): Promise<SeasonalData> {
+    try {
+      // Calculate productivity metrics
+      const productivityMetrics = this.calculateProductivity(insertSeasonalData);
+      
+      const seasonalDataRecord = {
+        ...insertSeasonalData,
+        id: randomUUID(),
+        ...productivityMetrics,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      const result = await db.insert(seasonalData).values(seasonalDataRecord).returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error creating seasonal data:", error);
+      throw error;
+    }
+  }
+
+  async updateSeasonalData(id: string, seasonalDataUpdate: Partial<InsertSeasonalData>): Promise<SeasonalData | undefined> {
+    try {
+      // Recalculate productivity if yield or area data changed
+      const productivityMetrics = this.calculateProductivity(seasonalDataUpdate);
+      
+      const updateData = {
+        ...seasonalDataUpdate,
+        ...productivityMetrics,
+        updatedAt: new Date(),
+      };
+      
+      const result = await db.update(seasonalData)
+        .set(updateData)
+        .where(eq(seasonalData.id, id))
+        .returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error updating seasonal data:", error);
+      return undefined;
+    }
+  }
+
+  async deleteSeasonalData(id: string): Promise<boolean> {
+    try {
+      const result = await db.delete(seasonalData).where(eq(seasonalData.id, id));
+      return result.rowCount > 0;
+    } catch (error) {
+      console.error("Error deleting seasonal data:", error);
+      return false;
+    }
+  }
+
+  // Helper method to calculate productivity metrics
+  private calculateProductivity(data: Partial<InsertSeasonalData>) {
+    const metrics: any = {};
+    
+    if (data.yieldKgs && data.landAreaAcres && data.landAreaM2) {
+      metrics.productivityKgsPerAcre = (parseFloat(data.yieldKgs.toString()) / parseFloat(data.landAreaAcres.toString())).toString();
+      metrics.productivityKgsPerM2 = (parseFloat(data.yieldKgs.toString()) / parseFloat(data.landAreaM2.toString())).toString();
+    }
+    
+    return metrics;
+  }
 }
 
 // Fallback memory storage for development (when DATABASE_URL not available)
@@ -302,12 +395,14 @@ export class MemStorage implements IStorage {
   private farms: Map<string, Farm>;
   private plots: Map<string, Plot>;
   private paths: Map<string, Path>;
+  private seasonalDataRecords: Map<string, SeasonalData>;
 
   constructor() {
     this.users = new Map();
     this.farms = new Map();
     this.plots = new Map();
     this.paths = new Map();
+    this.seasonalDataRecords = new Map();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -457,6 +552,71 @@ export class MemStorage implements IStorage {
 
   async deletePath(id: string): Promise<boolean> {
     return this.paths.delete(id);
+  }
+
+  // Seasonal data operations
+  async getSeasonalData(id: string): Promise<SeasonalData | undefined> {
+    return this.seasonalDataRecords.get(id);
+  }
+
+  async getSeasonalDataByFarmId(farmId: string): Promise<SeasonalData[]> {
+    return Array.from(this.seasonalDataRecords.values()).filter(data => data.farmId === farmId);
+  }
+
+  async createSeasonalData(insertSeasonalData: InsertSeasonalData): Promise<SeasonalData> {
+    const id = randomUUID();
+    
+    // Calculate productivity metrics
+    const productivityMetrics = this.calculateProductivity(insertSeasonalData);
+    
+    const seasonalData: SeasonalData = { 
+      ...insertSeasonalData,
+      id,
+      ...productivityMetrics,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    
+    this.seasonalDataRecords.set(id, seasonalData);
+    return seasonalData;
+  }
+
+  async updateSeasonalData(id: string, seasonalDataUpdate: Partial<InsertSeasonalData>): Promise<SeasonalData | undefined> {
+    const existing = this.seasonalDataRecords.get(id);
+    if (!existing) return undefined;
+
+    // Recalculate productivity metrics
+    const productivityMetrics = this.calculateProductivity(seasonalDataUpdate);
+    
+    const updated: SeasonalData = {
+      ...existing,
+      ...seasonalDataUpdate,
+      ...productivityMetrics,
+      updatedAt: new Date(),
+    };
+    
+    this.seasonalDataRecords.set(id, updated);
+    return updated;
+  }
+
+  async deleteSeasonalData(id: string): Promise<boolean> {
+    return this.seasonalDataRecords.delete(id);
+  }
+
+  // Helper method to calculate productivity metrics
+  private calculateProductivity(data: Partial<InsertSeasonalData>) {
+    const metrics: any = {};
+    
+    if (data.yieldKgs && data.landAreaAcres && data.landAreaM2) {
+      const yieldKgs = typeof data.yieldKgs === 'string' ? parseFloat(data.yieldKgs) : data.yieldKgs;
+      const landAreaAcres = typeof data.landAreaAcres === 'string' ? parseFloat(data.landAreaAcres) : data.landAreaAcres;
+      const landAreaM2 = typeof data.landAreaM2 === 'string' ? parseFloat(data.landAreaM2) : data.landAreaM2;
+      
+      metrics.productivityKgsPerAcre = (yieldKgs / landAreaAcres).toString();
+      metrics.productivityKgsPerM2 = (yieldKgs / landAreaM2).toString();
+    }
+    
+    return metrics;
   }
 }
 

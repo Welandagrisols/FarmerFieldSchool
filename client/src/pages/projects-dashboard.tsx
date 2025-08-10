@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { Plus, MapPin, Calendar, User, Trash2, Edit, Eye, Ruler } from "lucide-react";
+import { Plus, MapPin, Calendar, User, Trash2, Edit, Eye, Ruler, TrendingUp } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -198,17 +198,23 @@ export function ProjectsDashboard() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-2 mt-4">
-                  <Link href={`/projects/${project.id}`} className="flex-1">
+                <div className="flex gap-2 mt-4 flex-wrap">
+                  <Link href={`/projects/${project.id}`} className="flex-1 min-w-0">
                     <Button className="w-full" variant="outline">
                       <MapPin className="h-4 w-4 mr-2" />
                       Layout
                     </Button>
                   </Link>
-                  <Link href={`/projects/${project.id}/survey`} className="flex-1">
+                  <Link href={`/projects/${project.id}/survey`} className="flex-1 min-w-0">
                     <Button className="w-full" variant="outline">
                       <Ruler className="h-4 w-4 mr-2" />
                       Survey
+                    </Button>
+                  </Link>
+                  <Link href={`/projects/${project.id}/baseline`} className="flex-1 min-w-0">
+                    <Button className="w-full" variant="outline">
+                      <TrendingUp className="h-4 w-4 mr-2" />
+                      Baseline
                     </Button>
                   </Link>
                 </div>
