@@ -78,7 +78,7 @@ export class DatabaseStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     try {
       const userData = {
-        id: insertUser.id || randomUUID(),
+        id: randomUUID(),
         email: insertUser.email,
         name: insertUser.name || null,
         createdAt: new Date(),
@@ -98,7 +98,7 @@ export class DatabaseStorage implements IStorage {
       
       // If userId provided, ensure user can only access their own farms
       if (userId) {
-        whereClause = and(eq(farms.id, id), eq(farms.userId, userId));
+        whereClause = and(eq(farms.id, id), eq(farms.userId, userId))!;
       }
       
       const result = await db.select().from(farms).where(whereClause).limit(1);
@@ -154,7 +154,7 @@ export class DatabaseStorage implements IStorage {
 
       let whereClause = eq(farms.id, id);
       if (userId) {
-        whereClause = and(eq(farms.id, id), eq(farms.userId, userId));
+        whereClause = and(eq(farms.id, id), eq(farms.userId, userId))!;
       }
 
       const result = await db.update(farms)
@@ -177,7 +177,7 @@ export class DatabaseStorage implements IStorage {
       // Then delete the farm itself
       let whereClause = eq(farms.id, id);
       if (userId) {
-        whereClause = and(eq(farms.id, id), eq(farms.userId, userId));
+        whereClause = and(eq(farms.id, id), eq(farms.userId, userId))!;
       }
 
       const result = await db.delete(farms).where(whereClause);
@@ -414,7 +414,7 @@ export class MemStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = insertUser.id || randomUUID();
+    const id = randomUUID();
     const user: User = { 
       ...insertUser, 
       id, 
