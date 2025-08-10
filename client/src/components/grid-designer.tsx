@@ -112,6 +112,10 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
     if (pathWidth !== undefined) setDrawingPathWidth(pathWidth);
   };
 
+  const handleUndoPoint = () => {
+    setCurrentDrawingPoints(prev => prev.slice(0, -1));
+  };
+
   const renderCurrentDrawingPath = () => {
     if (!isDrawingPath || currentDrawingPoints.length === 0) return null;
 
@@ -217,9 +221,13 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
           gridWidth={currentGridConfig.width}
           gridHeight={currentGridConfig.height}
           onPathCreated={() => {
-            // Path created, component will automatically refresh via react-query
+            // Path created, reset drawing state
+            setIsDrawingPath(false);
+            setCurrentDrawingPoints([]);
           }}
           onDrawingModeChange={handleDrawingModeChange}
+          currentPoints={currentDrawingPoints}
+          onUndoPoint={handleUndoPoint}
         />
         
         {/* Farm Grid Canvas */}
@@ -228,8 +236,19 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
           className={`relative bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden ${isDrawingPath ? "cursor-crosshair" : ""}`}
           style={{ minHeight: "600px" }}
           onClick={(e) => {
-            if (isDrawingPath && pathClickHandler) {
-              pathClickHandler(e);
+            if (isDrawingPath) {
+              const gridElement = e.currentTarget as HTMLElement;
+              const rect = gridElement.getBoundingClientRect();
+              const x = Math.floor((e.clientX - rect.left) / currentGridConfig.cellSize);
+              const y = Math.floor((e.clientY - rect.top) / currentGridConfig.cellSize);
+
+              // Constrain to grid boundaries
+              const constrainedX = Math.max(0, Math.min(currentGridConfig.width - 1, x));
+              const constrainedY = Math.max(0, Math.min(currentGridConfig.height - 1, y));
+
+              // Add point directly to current drawing points
+              setCurrentDrawingPoints(prev => [...prev, { x: constrainedX, y: constrainedY }]);
+              console.log("Added point to grid:", { x: constrainedX, y: constrainedY });
             }
           }}
         >

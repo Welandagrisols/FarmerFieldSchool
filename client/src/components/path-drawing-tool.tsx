@@ -19,6 +19,8 @@ interface PathDrawingToolProps {
   gridHeight: number;
   onPathCreated: () => void;
   onDrawingModeChange: (isDrawing: boolean, onGridClick?: (e: React.MouseEvent<Element, MouseEvent>) => void, currentPoints?: Point[], pathColor?: string, pathWidth?: number) => void;
+  currentPoints?: Point[];
+  onUndoPoint?: () => void;
 }
 
 export function PathDrawingTool({ 
@@ -27,7 +29,9 @@ export function PathDrawingTool({
   gridWidth, 
   gridHeight, 
   onPathCreated,
-  onDrawingModeChange
+  onDrawingModeChange,
+  currentPoints = [],
+  onUndoPoint
 }: PathDrawingToolProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -65,15 +69,9 @@ export function PathDrawingTool({
 
   const startDrawing = () => {
     setIsDrawing(true);
-    onDrawingModeChange(true, handleGridClick, pathPoints, pathColor, pathWidth);
+    setPathPoints([]); // Reset points when starting
+    onDrawingModeChange(true, handleGridClick, [], pathColor, pathWidth);
   };
-
-  // Update grid with current drawing state whenever pathPoints change
-  React.useEffect(() => {
-    if (isDrawing) {
-      onDrawingModeChange(true, handleGridClick, pathPoints, pathColor, pathWidth);
-    }
-  }, [pathPoints, pathColor, pathWidth, isDrawing]);
 
   const cancelDrawing = () => {
     resetDrawing();
@@ -106,7 +104,8 @@ export function PathDrawingTool({
   };
 
   const finishPath = () => {
-    if (pathPoints.length < 2) {
+    const pointsToUse = currentPoints.length > 0 ? currentPoints : pathPoints;
+    if (pointsToUse.length < 2) {
       toast({
         title: "Path too short",
         description: "A path needs at least 2 points.",
@@ -118,7 +117,7 @@ export function PathDrawingTool({
     createPathMutation.mutate({
       farmId,
       name: pathName,
-      points: JSON.stringify(pathPoints),
+      points: JSON.stringify(pointsToUse),
       width: pathWidth,
       color: pathColor,
     });
@@ -236,13 +235,13 @@ export function PathDrawingTool({
             </p>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-500">
-                Points: {pathPoints.length}
+                Points: {currentPoints.length}
               </span>
               <Button
                 size="sm"
                 variant="outline"
-                onClick={undoLastPoint}
-                disabled={pathPoints.length === 0}
+                onClick={onUndoPoint || undoLastPoint}
+                disabled={currentPoints.length === 0}
               >
                 <Undo className="w-4 h-4 mr-1" />
                 Undo
@@ -250,7 +249,7 @@ export function PathDrawingTool({
               <Button
                 size="sm"
                 onClick={finishPath}
-                disabled={pathPoints.length < 2 || createPathMutation.isPending}
+                disabled={currentPoints.length < 2 || createPathMutation.isPending}
                 className="bg-green-600 text-white hover:bg-green-700"
               >
                 {createPathMutation.isPending ? "Creating..." : "Finish Path"}
