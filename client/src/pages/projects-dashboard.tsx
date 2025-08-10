@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { Plus, MapPin, Calendar, User, Trash2, Edit, Eye } from "lucide-react";
+import { Plus, MapPin, Calendar, User, Trash2, Edit, Eye, Ruler } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -134,8 +134,13 @@ export function ProjectsDashboard() {
                   
                   <div className="flex flex-col gap-1">
                     <Link href={`/projects/${project.id}`}>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="View Project">
                         <Eye className="h-3 w-3" />
+                      </Button>
+                    </Link>
+                    <Link href={`/projects/${project.id}/survey`}>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Survey Tools">
+                        <Ruler className="h-3 w-3" />
                       </Button>
                     </Link>
                     <Button 
@@ -143,6 +148,7 @@ export function ProjectsDashboard() {
                       size="sm" 
                       className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600"
                       onClick={() => handleDeleteProject(project.id, project.name)}
+                      title="Delete Project"
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -191,12 +197,21 @@ export function ProjectsDashboard() {
                   )}
                 </div>
 
-                {/* Action Button */}
-                <Link href={`/projects/${project.id}`}>
-                  <Button className="w-full mt-4" variant="outline">
-                    View & Edit Layout
-                  </Button>
-                </Link>
+                {/* Action Buttons */}
+                <div className="flex gap-2 mt-4">
+                  <Link href={`/projects/${project.id}`} className="flex-1">
+                    <Button className="w-full" variant="outline">
+                      <MapPin className="h-4 w-4 mr-2" />
+                      Layout
+                    </Button>
+                  </Link>
+                  <Link href={`/projects/${project.id}/survey`} className="flex-1">
+                    <Button className="w-full" variant="outline">
+                      <Ruler className="h-4 w-4 mr-2" />
+                      Survey
+                    </Button>
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           ))}

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Farm Layout Planner is a web application that allows users to design and manage farm layouts through an interactive grid-based interface. Users can create multiple farms, add plots to each farm with customizable properties (size, position, color), and visually arrange them on a draggable grid system. The application provides a comprehensive farm management dashboard with real-time updates and persistent storage.
+Farm Layout Planner is a comprehensive web application that allows users to design and manage farm layouts through an interactive grid-based interface with professional surveying capabilities. Users can create detailed farm projects with owner information, GPS coordinates, crop planning, and layout visualization. The application includes a professional surveyor tool for precise land measurement, distance calculation, and boundary mapping. Users can create multiple farm projects, add plots with customizable properties, conduct professional surveys, and manage all data through a unified dashboard with persistent storage.
 
 ## User Preferences
 
@@ -42,6 +42,8 @@ Preferred communication style: Simple, everyday language.
 - **Modal System**: Centralized modal management for farm and plot creation
 - **Grid System**: Dynamic grid rendering with customizable cell sizes
 - **Color System**: Predefined color schemes for plot categorization
+- **Surveyor Tool**: Professional canvas-based surveying interface with measurement capabilities
+- **Project Management**: Comprehensive dashboard for managing multiple farm projects
 
 ### Development Workflow
 - **Build Process**: Separate build configurations for client and server
