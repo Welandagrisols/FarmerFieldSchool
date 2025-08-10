@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,7 +18,7 @@ interface PathDrawingToolProps {
   gridWidth: number;
   gridHeight: number;
   onPathCreated: () => void;
-  onDrawingModeChange: (isDrawing: boolean, onGridClick?: (e: React.MouseEvent) => void) => void;
+  onDrawingModeChange: (isDrawing: boolean, onGridClick?: (e: React.MouseEvent<Element, MouseEvent>) => void, currentPoints?: Point[], pathColor?: string, pathWidth?: number) => void;
 }
 
 export function PathDrawingTool({ 
@@ -38,7 +38,7 @@ export function PathDrawingTool({
   const [pathWidth, setPathWidth] = useState(1); // Minimum 1 meter width
   
   const createPathMutation = useMutation({
-    mutationFn: (pathData: any) => localStorageService.createPath(pathData),
+    mutationFn: async (pathData: any) => localStorageService.createPath(pathData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/farms', farmId, 'paths'] });
       toast({
@@ -65,14 +65,22 @@ export function PathDrawingTool({
 
   const startDrawing = () => {
     setIsDrawing(true);
-    onDrawingModeChange(true, handleGridClick);
+    onDrawingModeChange(true, handleGridClick, pathPoints, pathColor, pathWidth);
   };
+
+  // Update grid with current drawing state whenever pathPoints change
+  React.useEffect(() => {
+    if (isDrawing) {
+      onDrawingModeChange(true, handleGridClick, pathPoints, pathColor, pathWidth);
+    }
+  }, [pathPoints, pathColor, pathWidth, isDrawing]);
 
   const cancelDrawing = () => {
     resetDrawing();
   };
 
   const handleGridClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    console.log("Grid clicked, isDrawing:", isDrawing);
     if (!isDrawing) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
@@ -83,7 +91,12 @@ export function PathDrawingTool({
     const constrainedX = Math.max(0, Math.min(gridWidth - 1, x));
     const constrainedY = Math.max(0, Math.min(gridHeight - 1, y));
 
-    setPathPoints(prev => [...prev, { x: constrainedX, y: constrainedY }]);
+    console.log("Adding point:", { x: constrainedX, y: constrainedY });
+    setPathPoints(prev => {
+      const newPoints = [...prev, { x: constrainedX, y: constrainedY }];
+      console.log("Updated pathPoints:", newPoints);
+      return newPoints;
+    });
   };
 
   const undoLastPoint = () => {

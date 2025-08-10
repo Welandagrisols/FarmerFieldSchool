@@ -20,6 +20,9 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
   const [gridSize, setGridSize] = useState("30x30");
   const [isDrawingPath, setIsDrawingPath] = useState(false);
   const [pathClickHandler, setPathClickHandler] = useState<((e: React.MouseEvent) => void) | null>(null);
+  const [currentDrawingPoints, setCurrentDrawingPoints] = useState<{x: number, y: number}[]>([]);
+  const [drawingPathColor, setDrawingPathColor] = useState("brown");
+  const [drawingPathWidth, setDrawingPathWidth] = useState(1);
   const gridRef = useRef<HTMLDivElement>(null);
 
   const { data: plots = [] } = useQuery({
@@ -101,9 +104,70 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
     clearAllPlotsMutation.mutate();
   };
 
-  const handleDrawingModeChange = (isDrawing: boolean, onGridClick?: (e: React.MouseEvent) => void) => {
+  const handleDrawingModeChange = (isDrawing: boolean, onGridClick?: (e: React.MouseEvent) => void, currentPoints?: {x: number, y: number}[], pathColor?: string, pathWidth?: number) => {
     setIsDrawingPath(isDrawing);
     setPathClickHandler(onGridClick || null);
+    if (currentPoints) setCurrentDrawingPoints(currentPoints);
+    if (pathColor) setDrawingPathColor(pathColor);
+    if (pathWidth !== undefined) setDrawingPathWidth(pathWidth);
+  };
+
+  const renderCurrentDrawingPath = () => {
+    if (!isDrawingPath || currentDrawingPoints.length === 0) return null;
+
+    const getPathColor = (color: string) => {
+      switch (color) {
+        case "brown": return "#8B4513";
+        case "gray": return "#6B7280"; 
+        case "yellow": return "#EAB308";
+        default: return "#8B4513";
+      }
+    };
+
+    // Always render points
+    const points = currentDrawingPoints.map((point, index) => (
+      <circle
+        key={index}
+        cx={point.x * currentGridConfig.cellSize + currentGridConfig.cellSize / 2}
+        cy={point.y * currentGridConfig.cellSize + currentGridConfig.cellSize / 2}
+        r="4"
+        fill={getPathColor(drawingPathColor)}
+        stroke="white"
+        strokeWidth="1"
+        className="opacity-80"
+      />
+    ));
+
+    // Only render path line if we have 2+ points
+    if (currentDrawingPoints.length < 2) {
+      return <g>{points}</g>;
+    }
+
+    const pathString = currentDrawingPoints.reduce((acc, point, index) => {
+      const x = point.x * currentGridConfig.cellSize + currentGridConfig.cellSize / 2;
+      const y = point.y * currentGridConfig.cellSize + currentGridConfig.cellSize / 2;
+      
+      if (index === 0) {
+        return `M ${x} ${y}`;
+      }
+      return `${acc} L ${x} ${y}`;
+    }, "");
+
+    return (
+      <g>
+        <path
+          d={pathString}
+          stroke={getPathColor(drawingPathColor)}
+          strokeWidth={drawingPathWidth * 2}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="opacity-60"
+          strokeDasharray="5,5"
+        />
+        {points}
+      </g>
+    );
   };
 
   const gridSizeMap = {
@@ -188,6 +252,7 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
                 onDelete={handlePathDelete}
               />
             ))}
+            {renderCurrentDrawingPath()}
           </svg>
           
           {/* Plots */}
