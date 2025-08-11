@@ -77,6 +77,9 @@ export function PlotDetailsModal({ isOpen, onClose, plot, farmId }: PlotDetailsM
 
   const updatePlotMutation = useMutation({
     mutationFn: async (data: PlotUpdateData) => {
+      console.log("Starting plot update mutation for plot:", plot.id);
+      console.log("Raw form data:", data);
+      
       // Process the form data
       const processedData = {
         ...data,
@@ -93,7 +96,12 @@ export function PlotDetailsModal({ isOpen, onClose, plot, farmId }: PlotDetailsM
         actualYieldPerHectare: data.actualYieldPerHectare ? parseFloat(data.actualYieldPerHectare) : null,
       };
 
-      return apiRequest(`/api/plots/${plot.id}`, 'PUT', processedData);
+      console.log("Processed data:", processedData);
+      console.log("Making API request to:", `/api/plots/${plot.id}`);
+      
+      const result = await apiRequest(`/api/plots/${plot.id}`, 'PUT', processedData);
+      console.log("API request result:", result);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/farms', farmId, 'plots'] });
@@ -103,16 +111,20 @@ export function PlotDetailsModal({ isOpen, onClose, plot, farmId }: PlotDetailsM
       });
       onClose();
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Plot update mutation failed:", error);
       toast({
         title: "Error",
-        description: "Failed to update plot information. Please try again.",
+        description: `Failed to update plot information: ${error?.message || "Unknown error"}. Please try again.`,
         variant: "destructive",
       });
     },
   });
 
   const handleSubmit = (data: PlotUpdateData) => {
+    console.log("Form submitted with data:", data);
+    console.log("Form errors:", form.formState.errors);
+    console.log("Form is valid:", form.formState.isValid);
     updatePlotMutation.mutate(data);
   };
 
