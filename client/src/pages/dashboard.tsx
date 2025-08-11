@@ -87,8 +87,8 @@ export default function Dashboard() {
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900">{selectedFarm.name}</h2>
                     <p className="text-gray-600">{selectedFarm.location}</p>
-                    {selectedFarm.description && (
-                      <p className="text-sm text-gray-500 mt-1">{selectedFarm.description}</p>
+                    {selectedFarm.notes && (
+                      <p className="text-sm text-gray-500 mt-1">{selectedFarm.notes}</p>
                     )}
                   </div>
                   
@@ -111,7 +111,7 @@ export default function Dashboard() {
               </div>
 
               {/* Grid Designer */}
-              <GridDesigner farmId={selectedFarmId} />
+              <GridDesigner farmId={selectedFarmId!} />
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
