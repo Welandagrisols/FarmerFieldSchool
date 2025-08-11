@@ -79,15 +79,21 @@ export function CreateFarmModal({ isOpen, onClose, onSuccess }: CreateFarmModalP
       
       console.log("Sending to API:", farmData);
       
-      const response = await apiRequest("/api/projects", {
+      const response = await fetch("/api/projects", {
         method: "POST",
-        body: JSON.stringify(farmData),
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify(farmData),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
       
-      console.log("API success response:", response);
+      console.log("API success response:", result);
       
       toast({
         title: "Success!",
