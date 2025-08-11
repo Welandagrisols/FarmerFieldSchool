@@ -165,7 +165,8 @@ export function CreateFarmProjectModal({
           </Button>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mt-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mt-6" 
+              onInvalid={(e) => console.log("Form invalid:", e)}>
           {/* Basic Project Information */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -353,14 +354,53 @@ export function CreateFarmProjectModal({
             >
               Cancel
             </Button>
+            
+            {/* Debug button to test API directly */}
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                console.log("Testing direct API call...");
+                createProjectMutation.mutate({
+                  name: "Direct Test Farm",
+                  ownerName: "Direct Test Owner",
+                  location: "Direct Test Location",
+                  latitude: null,
+                  longitude: null,
+                  farmSize: null,
+                  crops: null,
+                  notes: null,
+                });
+              }}
+              disabled={isSubmitting}
+              className="min-w-[120px]"
+            >
+              Test API
+            </Button>
+            
             <Button
               type="submit"
               disabled={isSubmitting}
               className="min-w-[120px]"
-              onClick={() => {
+              onClick={(e) => {
                 console.log("Create button clicked!");
                 console.log("Form errors:", errors);
                 console.log("Is submitting:", isSubmitting);
+                console.log("Form valid:", Object.keys(errors).length === 0);
+                // Force manual submit for testing
+                const formData = {
+                  name: "Manual Test",
+                  ownerName: "Manual Owner", 
+                  location: "Manual Location",
+                  latitude: null,
+                  longitude: null,
+                  farmSize: null,
+                  crops: null,
+                  notes: null,
+                };
+                console.log("Manual submit:", formData);
+                createProjectMutation.mutate(formData);
+                e.preventDefault(); // Prevent default form submission for testing
               }}
             >
               {isSubmitting ? "Creating..." : "Create Project"}
