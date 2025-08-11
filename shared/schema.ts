@@ -137,6 +137,20 @@ export const insertFarmSchema = createInsertSchema(farms).omit({
 export const insertPlotSchema = createInsertSchema(plots).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
+}).extend({
+  // Add validation for agricultural fields
+  basalFertilizerRate: z.number().nonnegative().optional().nullable(),
+  topDressingFertilizerRate: z.number().nonnegative().optional().nullable(),
+  expectedYieldPerHectare: z.number().nonnegative().optional().nullable(),
+  actualYieldPerHectare: z.number().nonnegative().optional().nullable(),
+  plantingDate: z.string().optional().nullable(),
+  expectedHarvestDate: z.string().optional().nullable(),
+  basalApplicationDate: z.string().optional().nullable(),
+  topDressingApplicationDate: z.string().optional().nullable(),
+  pesticidesUsed: z.array(z.string()).optional().nullable(),
+  fungicidesUsed: z.array(z.string()).optional().nullable(),
+  herbicidesUsed: z.array(z.string()).optional().nullable(),
 });
 
 export const insertPathSchema = createInsertSchema(paths).omit({

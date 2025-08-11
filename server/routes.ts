@@ -251,14 +251,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/plots/:id", async (req, res) => {
     try {
+      console.log("Updating plot:", req.params.id, "with data:", req.body);
       const validatedData = insertPlotSchema.partial().parse(req.body);
+      console.log("Validated data:", validatedData);
       const plot = await storage.updatePlot(req.params.id, validatedData);
       if (!plot) {
+        console.log("Plot not found:", req.params.id);
         return res.status(404).json({ message: "Plot not found" });
       }
+      console.log("Plot updated successfully:", plot);
       res.json(plot);
     } catch (error) {
-      res.status(400).json({ message: "Invalid plot data" });
+      console.error("Error updating plot:", error);
+      res.status(400).json({ 
+        message: "Invalid plot data",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

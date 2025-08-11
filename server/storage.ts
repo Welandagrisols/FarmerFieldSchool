@@ -500,7 +500,25 @@ export class MemStorage implements IStorage {
       id, 
       color: insertPlot.color || "green",
       createdAt: new Date(),
+      updatedAt: new Date(),
       cropType: insertPlot.cropType || null,
+      seedVariety: insertPlot.seedVariety || null,
+      plantingDate: insertPlot.plantingDate ? new Date(insertPlot.plantingDate) : null,
+      expectedHarvestDate: insertPlot.expectedHarvestDate ? new Date(insertPlot.expectedHarvestDate) : null,
+      basalFertilizerType: insertPlot.basalFertilizerType || null,
+      basalFertilizerRate: insertPlot.basalFertilizerRate?.toString() || null,
+      basalApplicationDate: insertPlot.basalApplicationDate ? new Date(insertPlot.basalApplicationDate) : null,
+      topDressingFertilizerType: insertPlot.topDressingFertilizerType || null,
+      topDressingFertilizerRate: insertPlot.topDressingFertilizerRate?.toString() || null,
+      topDressingApplicationDate: insertPlot.topDressingApplicationDate ? new Date(insertPlot.topDressingApplicationDate) : null,
+      pesticidesUsed: insertPlot.pesticidesUsed || null,
+      fungicidesUsed: insertPlot.fungicidesUsed || null,
+      herbicidesUsed: insertPlot.herbicidesUsed || null,
+      treatmentNotes: insertPlot.treatmentNotes || null,
+      expectedYieldPerHectare: insertPlot.expectedYieldPerHectare?.toString() || null,
+      actualYieldPerHectare: insertPlot.actualYieldPerHectare?.toString() || null,
+      growthStage: insertPlot.growthStage || null,
+      notes: insertPlot.notes || null,
     };
     this.plots.set(id, plot);
     return plot;
@@ -510,7 +528,21 @@ export class MemStorage implements IStorage {
     const existing = this.plots.get(id);
     if (!existing) return undefined;
     
-    const updated: Plot = { ...existing, ...plotUpdate };
+    const updated: Plot = { 
+      ...existing, 
+      ...plotUpdate,
+      updatedAt: new Date(),
+      // Handle date conversions properly
+      plantingDate: plotUpdate.plantingDate ? new Date(plotUpdate.plantingDate) : existing.plantingDate,
+      expectedHarvestDate: plotUpdate.expectedHarvestDate ? new Date(plotUpdate.expectedHarvestDate) : existing.expectedHarvestDate,
+      basalApplicationDate: plotUpdate.basalApplicationDate ? new Date(plotUpdate.basalApplicationDate) : existing.basalApplicationDate,
+      topDressingApplicationDate: plotUpdate.topDressingApplicationDate ? new Date(plotUpdate.topDressingApplicationDate) : existing.topDressingApplicationDate,
+      // Convert numeric fields to strings to match schema
+      basalFertilizerRate: plotUpdate.basalFertilizerRate ? plotUpdate.basalFertilizerRate.toString() : existing.basalFertilizerRate,
+      topDressingFertilizerRate: plotUpdate.topDressingFertilizerRate ? plotUpdate.topDressingFertilizerRate.toString() : existing.topDressingFertilizerRate,
+      expectedYieldPerHectare: plotUpdate.expectedYieldPerHectare ? plotUpdate.expectedYieldPerHectare.toString() : existing.expectedYieldPerHectare,
+      actualYieldPerHectare: plotUpdate.actualYieldPerHectare ? plotUpdate.actualYieldPerHectare.toString() : existing.actualYieldPerHectare,
+    };
     this.plots.set(id, updated);
     return updated;
   }
