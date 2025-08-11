@@ -9,6 +9,7 @@ import { ProjectsDashboard } from "@/pages/projects-dashboard";
 import { ProjectLayoutPage } from "@/pages/project-layout";
 import { SurveyorPage } from "./pages/surveyor";
 import { BaselineDataPage } from "./pages/baseline-data";
+import { SatelliteViewPage } from "./pages/satellite-view";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/projects/:id" component={ProjectLayoutPage} />
       <Route path="/projects/:id/survey" component={SurveyorPage} />
       <Route path="/projects/:id/baseline" component={BaselineDataPage} />
+      <Route path="/projects/:id/satellite" component={SatelliteViewPage} />
       <Route path="/survey" component={SurveyorPage} />
       <Route component={NotFound} />
     </Switch>

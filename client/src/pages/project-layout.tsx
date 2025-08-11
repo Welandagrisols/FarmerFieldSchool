@@ -1,6 +1,6 @@
 import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Settings } from "lucide-react";
+import { ArrowLeft, Plus, Settings, Satellite, Ruler, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GridDesigner } from "@/components/grid-designer";
 import { AddPlotModal } from "@/components/add-plot-modal";
@@ -72,17 +72,40 @@ export function ProjectLayoutPage() {
             </div>
             
             <div className="flex items-center gap-3">
-              <Button 
-                onClick={() => setIsAddPlotModalOpen(true)}
-                className="bg-farm-green text-white hover:bg-farm-deep"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Plot
-              </Button>
-              <Button variant="outline">
-                <Settings className="w-4 h-4 mr-2" />
-                Layout Settings
-              </Button>
+              <div className="flex gap-2">
+                <Link href={`/projects/${id}/satellite`}>
+                  <Button variant="outline" size="sm">
+                    <Satellite className="w-4 h-4 mr-2" />
+                    Satellite View
+                  </Button>
+                </Link>
+                <Link href={`/projects/${id}/survey`}>
+                  <Button variant="outline" size="sm">
+                    <Ruler className="w-4 h-4 mr-2" />
+                    Survey Tools
+                  </Button>
+                </Link>
+                <Link href={`/projects/${id}/baseline`}>
+                  <Button variant="outline" size="sm">
+                    <BarChart3 className="w-4 h-4 mr-2" />
+                    Baseline Data
+                  </Button>
+                </Link>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => setIsAddPlotModalOpen(true)}
+                  className="bg-farm-green text-white hover:bg-farm-deep"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Plot
+                </Button>
+                <Button variant="outline">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </Button>
+              </div>
             </div>
           </div>
         </div>
