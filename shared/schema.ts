@@ -28,7 +28,7 @@ export const farms = pgTable("farms", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Plots table - now references farms with enhanced structure
+// Plots table - enhanced with detailed agricultural information
 export const plots = pgTable("plots", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   farmId: varchar("farm_id").notNull(),
@@ -38,8 +38,37 @@ export const plots = pgTable("plots", {
   width: integer("width").notNull(),
   height: integer("height").notNull(),
   color: text("color").notNull().default("green"),
-  cropType: text("crop_type"), // What's planted in this plot
+  
+  // Crop Information
+  cropType: text("crop_type"), // e.g., "Maize", "Tomatoes", "Beans"
+  seedVariety: text("seed_variety"), // e.g., "DK777", "HB 6213", "Cal J"
+  plantingDate: timestamp("planting_date"),
+  expectedHarvestDate: timestamp("expected_harvest_date"),
+  
+  // Fertilizer Information
+  basalFertilizerType: text("basal_fertilizer_type"), // e.g., "DAP", "NPK 17:17:17"
+  basalFertilizerRate: decimal("basal_fertilizer_rate", { precision: 8, scale: 2 }), // kg per hectare
+  basalApplicationDate: timestamp("basal_application_date"),
+  
+  topDressingFertilizerType: text("top_dressing_fertilizer_type"), // e.g., "CAN", "Urea"
+  topDressingFertilizerRate: decimal("top_dressing_fertilizer_rate", { precision: 8, scale: 2 }), // kg per hectare
+  topDressingApplicationDate: timestamp("top_dressing_application_date"),
+  
+  // Treatment Information
+  pesticidesUsed: text("pesticides_used").array(), // Array of pesticide names
+  fungicidesUsed: text("fungicides_used").array(), // Array of fungicide names
+  herbicidesUsed: text("herbicides_used").array(), // Array of herbicide names
+  treatmentNotes: text("treatment_notes"), // Additional treatment information
+  
+  // Growth and Yield Tracking
+  expectedYieldPerHectare: decimal("expected_yield_per_hectare", { precision: 10, scale: 2 }),
+  actualYieldPerHectare: decimal("actual_yield_per_hectare", { precision: 10, scale: 2 }),
+  growthStage: text("growth_stage"), // e.g., "Germination", "Vegetative", "Flowering", "Maturity"
+  
+  // Additional Notes
+  notes: text("notes"), // General plot notes
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Paths table for farm layout design

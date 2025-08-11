@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { X } from "lucide-react";
+import { X, Info } from "lucide-react";
 import { Plot } from "@shared/schema";
 import { PLOT_COLORS, PlotColor } from "@/types/farm";
 
@@ -10,6 +10,7 @@ interface DraggablePlotProps {
   gridHeight: number;
   onMove: (plotId: string, newX: number, newY: number) => void;
   onDelete: (plotId: string) => void;
+  onShowDetails?: (plot: Plot) => void;
 }
 
 export function DraggablePlot({ 
@@ -18,7 +19,8 @@ export function DraggablePlot({
   gridWidth, 
   gridHeight, 
   onMove, 
-  onDelete 
+  onDelete,
+  onShowDetails 
 }: DraggablePlotProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -102,19 +104,42 @@ export function DraggablePlot({
         <span className={`text-sm font-semibold ${colors.text} truncate`}>
           {plot.name}
         </span>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(plot.id);
-          }}
-          className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 text-xs p-1 rounded hover:bg-red-100 transition-all"
-        >
-          <X className="w-3 h-3" />
-        </button>
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+          {onShowDetails && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onShowDetails(plot);
+              }}
+              className="text-blue-500 hover:text-blue-700 text-xs p-1 rounded hover:bg-blue-100"
+              title="View plot details"
+            >
+              <Info className="w-3 h-3" />
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(plot.id);
+            }}
+            className="text-red-500 hover:text-red-700 text-xs p-1 rounded hover:bg-red-100"
+            title="Delete plot"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
       </div>
-      <div className={`text-xs ${colors.text}`}>
+      <div className={`text-xs ${colors.text} space-y-1`}>
         <div>{plot.width}×{plot.height} units</div>
-        <div>({plot.x}, {plot.y})</div>
+        {plot.cropType && (
+          <div className="font-medium">{plot.cropType}</div>
+        )}
+        {plot.seedVariety && (
+          <div className="truncate">{plot.seedVariety}</div>
+        )}
+        {plot.growthStage && (
+          <div className="text-xs opacity-80">{plot.growthStage}</div>
+        )}
       </div>
     </div>
   );

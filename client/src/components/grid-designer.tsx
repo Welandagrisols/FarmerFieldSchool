@@ -4,6 +4,7 @@ import { Plot, Path } from "@shared/schema";
 import { DraggablePlot } from "./draggable-plot";
 import { PathDrawer } from "./path-drawer";
 import { PathDrawingTool } from "./path-drawing-tool";
+import { PlotDetailsModal } from "./plot-details-modal";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +25,8 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
   const [drawingPathColor, setDrawingPathColor] = useState("brown");
   const [drawingPathWidth, setDrawingPathWidth] = useState(1);
   const gridRef = useRef<HTMLDivElement>(null);
+  const [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
+  const [isPlotDetailsModalOpen, setIsPlotDetailsModalOpen] = useState(false);
 
   const { data: plots = [] } = useQuery<Plot[]>({
     queryKey: ['/api/farms', farmId, 'plots'],
@@ -119,6 +122,11 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
 
   const handleUndoPoint = () => {
     setCurrentDrawingPoints(prev => prev.slice(0, -1));
+  };
+
+  const handleShowPlotDetails = (plot: Plot) => {
+    setSelectedPlot(plot);
+    setIsPlotDetailsModalOpen(true);
   };
 
   const renderCurrentDrawingPath = () => {
@@ -309,6 +317,7 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
               gridHeight={currentGridConfig.height}
               onMove={handlePlotMove}
               onDelete={handlePlotDelete}
+              onShowDetails={handleShowPlotDetails}
             />
           ))}
 
@@ -322,6 +331,19 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
             </div>
           )}
         </div>
+
+        {/* Plot Details Modal */}
+        {selectedPlot && (
+          <PlotDetailsModal
+            isOpen={isPlotDetailsModalOpen}
+            onClose={() => {
+              setIsPlotDetailsModalOpen(false);
+              setSelectedPlot(null);
+            }}
+            plot={selectedPlot}
+            farmId={farmId}
+          />
+        )}
       </div>
     </div>
   );
