@@ -22,6 +22,9 @@ import { z } from "zod";
 // Extended form schema with additional validation
 const projectFormSchema = insertFarmSchema.extend({
   crops: z.array(z.string()).optional().nullable(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
+  farmSize: z.number().optional().nullable(),
 });
 
 type ProjectFormData = z.infer<typeof projectFormSchema>;
@@ -60,9 +63,9 @@ export function CreateFarmProjectModal({
       name: "",
       ownerName: "",
       location: "",
-      latitude: null,
-      longitude: null,
-      farmSize: null,
+      latitude: undefined,
+      longitude: undefined,
+      farmSize: undefined,
       crops: [],
       notes: "",
     },
@@ -123,8 +126,12 @@ export function CreateFarmProjectModal({
     console.log("Form errors:", errors);
     console.log("Selected crops:", selectedCrops);
     
+    // Clean up the data - ensure empty numbers become null
     const submitData = {
       ...data,
+      latitude: data.latitude || null,
+      longitude: data.longitude || null,
+      farmSize: data.farmSize || null,
       crops: selectedCrops.length > 0 ? selectedCrops : null,
     };
     
@@ -222,7 +229,10 @@ export function CreateFarmProjectModal({
                   id="latitude"
                   type="number"
                   step="any"
-                  {...register("latitude", { valueAsNumber: true })}
+                  {...register("latitude", { 
+                    valueAsNumber: true,
+                    setValueAs: v => v === "" ? null : v 
+                  })}
                   placeholder="40.7128"
                   disabled={isSubmitting}
                 />
@@ -234,7 +244,10 @@ export function CreateFarmProjectModal({
                   id="longitude"
                   type="number"
                   step="any"
-                  {...register("longitude", { valueAsNumber: true })}
+                  {...register("longitude", { 
+                    valueAsNumber: true,
+                    setValueAs: v => v === "" ? null : v 
+                  })}
                   placeholder="-74.0060"
                   disabled={isSubmitting}
                 />
@@ -246,7 +259,10 @@ export function CreateFarmProjectModal({
                   id="farmSize"
                   type="number"
                   step="0.1"
-                  {...register("farmSize", { valueAsNumber: true })}
+                  {...register("farmSize", { 
+                    valueAsNumber: true,
+                    setValueAs: v => v === "" ? null : v 
+                  })}
                   placeholder="100"
                   disabled={isSubmitting}
                 />
@@ -341,7 +357,11 @@ export function CreateFarmProjectModal({
               type="submit"
               disabled={isSubmitting}
               className="min-w-[120px]"
-              onClick={() => console.log("Create button clicked, form errors:", errors)}
+              onClick={() => {
+                console.log("Create button clicked!");
+                console.log("Form errors:", errors);
+                console.log("Is submitting:", isSubmitting);
+              }}
             >
               {isSubmitting ? "Creating..." : "Create Project"}
             </Button>
