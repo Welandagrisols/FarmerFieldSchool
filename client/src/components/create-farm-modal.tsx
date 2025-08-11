@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { localStorageService } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 interface CreateFarmModalProps {
   isOpen: boolean;
@@ -31,15 +31,40 @@ export function CreateFarmModal({ isOpen, onClose, onSuccess }: CreateFarmModalP
 
   const handleSubmit = async (data: InsertFarm) => {
     setIsSubmitting(true);
+    console.log("Simple form submitting:", data);
+    
     try {
-      const farm = localStorageService.createFarm(data);
+      // Create data in the correct format for the API
+      const farmData = {
+        name: data.name,
+        ownerName: data.name, // Use farm name as owner if not specified
+        location: data.location,
+        notes: data.description || null,
+        latitude: null,
+        longitude: null,
+        farmSize: null,
+        crops: null,
+        layoutData: null,
+      };
+      
+      console.log("Sending to API:", farmData);
+      
+      const response = await apiRequest({
+        url: "/api/projects",
+        method: "POST",
+        data: farmData,
+      });
+      
+      console.log("API response:", response);
+      
       toast({
         title: "Farm created",
-        description: `${farm.name} has been added to your projects.`,
+        description: `${data.name} has been added to your projects.`,
       });
       form.reset();
       onSuccess();
     } catch (error) {
+      console.error("API error:", error);
       toast({
         title: "Error",
         description: "Failed to create farm. Please try again.",
@@ -65,7 +90,8 @@ export function CreateFarmModal({ isOpen, onClose, onSuccess }: CreateFarmModalP
           </button>
         </div>
         
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4" 
+              onInvalid={(e) => console.log("Simple form invalid:", e)}>
           <div>
             <Label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
               Farm Name
