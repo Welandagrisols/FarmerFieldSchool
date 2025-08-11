@@ -7,7 +7,7 @@ import { insertPlotSchema, InsertPlot } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { localStorageService } from "@/lib/storage";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { PlotColor, PLOT_COLORS } from "@/types/farm";
 
@@ -38,7 +38,9 @@ export function AddPlotModal({ isOpen, onClose, farmId, onSuccess }: AddPlotModa
   });
 
   const createPlotMutation = useMutation({
-    mutationFn: async (plotData: InsertPlot) => localStorageService.createPlot(plotData),
+    mutationFn: async (plotData: InsertPlot) => {
+      return apiRequest(`/api/farms/${farmId}/plots`, 'POST', plotData);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/farms', farmId, 'plots'] });
       toast({
@@ -58,48 +60,14 @@ export function AddPlotModal({ isOpen, onClose, farmId, onSuccess }: AddPlotModa
   });
 
   const handleSubmit = (data: PlotFormData) => {
-    // Find an empty position for the plot
-    const existingPlots = localStorageService.getPlotsByFarmId(farmId);
-    let position = findEmptyPosition(existingPlots, data.width, data.height);
-    
     createPlotMutation.mutate({
       ...data,
-      x: position.x,
-      y: position.y,
       color: selectedColor,
       farmId,
     });
   };
 
-  // Simple algorithm to find an empty position
-  const findEmptyPosition = (plots: any[], width: number, height: number) => {
-    const gridSize = 30; // Default grid size
-    
-    for (let y = 0; y <= gridSize - height; y++) {
-      for (let x = 0; x <= gridSize - width; x++) {
-        let collision = false;
-        
-        for (const plot of plots) {
-          if (
-            x < plot.x + plot.width &&
-            x + width > plot.x &&
-            y < plot.y + plot.height &&
-            y + height > plot.y
-          ) {
-            collision = true;
-            break;
-          }
-        }
-        
-        if (!collision) {
-          return { x, y };
-        }
-      }
-    }
-    
-    // If no empty position found, place at origin
-    return { x: 0, y: 0 };
-  };
+
 
   if (!isOpen) return null;
 

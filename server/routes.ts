@@ -1,16 +1,18 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertFarmSchema, insertPlotSchema, insertPathSchema, insertUserSchema, insertSeasonalDataSchema } from "@shared/schema";
 
 // Simple session interface for authentication
-// In production, this would integrate with Supabase Auth or similar
+// In production, this would integrate with Supabase Auth or similar  
 interface AuthenticatedRequest extends Express.Request {
   user?: {
     id: string;
     email: string;
     name?: string;
   };
+  body: any;
+  params: any;
 }
 
 // Middleware to simulate user authentication

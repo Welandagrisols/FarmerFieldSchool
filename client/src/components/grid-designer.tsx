@@ -4,7 +4,7 @@ import { Plot, Path } from "@shared/schema";
 import { DraggablePlot } from "./draggable-plot";
 import { PathDrawer } from "./path-drawer";
 import { PathDrawingTool } from "./path-drawing-tool";
-import { localStorageService } from "@/lib/storage";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Eraser } from "lucide-react";
@@ -27,25 +27,17 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
 
   const { data: plots = [] } = useQuery<Plot[]>({
     queryKey: ['/api/farms', farmId, 'plots'],
-    queryFn: async () => {
-      // For now return empty array - plots will be implemented later
-      return [];
-    },
+    queryFn: () => apiRequest(`/api/farms/${farmId}/plots`),
   });
 
   const { data: paths = [] } = useQuery<Path[]>({
     queryKey: ['/api/farms', farmId, 'paths'],  
-    queryFn: async () => {
-      // For now return empty array - paths will be implemented later  
-      return [];
-    },
+    queryFn: () => apiRequest(`/api/farms/${farmId}/paths`),
   });
 
   const updatePlotMutation = useMutation({
     mutationFn: async ({ plotId, updates }: { plotId: string; updates: Partial<Plot> }) => {
-      // Plot update API will be implemented later
-      console.log("Plot update:", plotId, updates);
-      return null;
+      return apiRequest(`/api/plots/${plotId}`, 'PUT', updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/farms', farmId, 'plots'] });
@@ -54,9 +46,7 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
 
   const deletePlotMutation = useMutation({
     mutationFn: async (plotId: string) => {
-      // Plot delete API will be implemented later
-      console.log("Plot delete:", plotId);
-      return null;
+      return apiRequest(`/api/plots/${plotId}`, 'DELETE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/farms', farmId, 'plots'] });
@@ -69,9 +59,7 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
 
   const deletePathMutation = useMutation({
     mutationFn: async (pathId: string) => {
-      // Path delete API will be implemented later
-      console.log("Path delete:", pathId);
-      return null;
+      return apiRequest(`/api/paths/${pathId}`, 'DELETE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/farms', farmId, 'paths'] });
