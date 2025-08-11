@@ -25,26 +25,39 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
   const [drawingPathWidth, setDrawingPathWidth] = useState(1);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  const { data: plots = [] } = useQuery({
+  const { data: plots = [] } = useQuery<Plot[]>({
     queryKey: ['/api/farms', farmId, 'plots'],
-    queryFn: async () => localStorageService.getPlotsByFarmId(farmId),
+    queryFn: async () => {
+      // For now return empty array - plots will be implemented later
+      return [];
+    },
   });
 
-  const { data: paths = [] } = useQuery({
-    queryKey: ['/api/farms', farmId, 'paths'],
-    queryFn: async () => localStorageService.getPathsByFarmId(farmId),
+  const { data: paths = [] } = useQuery<Path[]>({
+    queryKey: ['/api/farms', farmId, 'paths'],  
+    queryFn: async () => {
+      // For now return empty array - paths will be implemented later  
+      return [];
+    },
   });
 
   const updatePlotMutation = useMutation({
-    mutationFn: async ({ plotId, updates }: { plotId: string; updates: Partial<Plot> }) =>
-      localStorageService.updatePlot(plotId, updates),
+    mutationFn: async ({ plotId, updates }: { plotId: string; updates: Partial<Plot> }) => {
+      // Plot update API will be implemented later
+      console.log("Plot update:", plotId, updates);
+      return null;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/farms', farmId, 'plots'] });
     },
   });
 
   const deletePlotMutation = useMutation({
-    mutationFn: async (plotId: string) => localStorageService.deletePlot(plotId),
+    mutationFn: async (plotId: string) => {
+      // Plot delete API will be implemented later
+      console.log("Plot delete:", plotId);
+      return null;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/farms', farmId, 'plots'] });
       toast({
@@ -55,7 +68,11 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
   });
 
   const deletePathMutation = useMutation({
-    mutationFn: async (pathId: string) => localStorageService.deletePath(pathId),
+    mutationFn: async (pathId: string) => {
+      // Path delete API will be implemented later
+      console.log("Path delete:", pathId);
+      return null;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/farms', farmId, 'paths'] });
       toast({
@@ -67,16 +84,16 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
 
   const clearAllPlotsMutation = useMutation({
     mutationFn: async () => {
-      for (const plot of plots) {
-        localStorageService.deletePlot(plot.id);
-      }
+      // Clear grid API will be implemented later
+      console.log("Clear all plots and paths");
       return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/farms', farmId, 'plots'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/farms', farmId, 'paths'] });
       toast({
         title: "Grid cleared",
-        description: "All plots have been removed from the grid.",
+        description: "All plots and paths have been cleared.",
       });
     },
   });
@@ -184,7 +201,7 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
 
   return (
     <div className="flex-1 p-6 overflow-auto">
-      <div className="bg-white rounded-lg border border-gray-200 p-6 min-h-full">
+      <div className="bg-white rounded-lg border border-gray-200 p-6 min-h-full shadow-sm">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">Farm Layout Grid</h3>
           <div className="flex items-center space-x-4">
@@ -233,8 +250,14 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
         {/* Farm Grid Canvas */}
         <div 
           ref={gridRef}
-          className={`relative bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden ${isDrawingPath ? "cursor-crosshair" : ""}`}
-          style={{ minHeight: "600px" }}
+          className={`relative bg-slate-50 border-2 border-solid border-gray-400 rounded-lg overflow-hidden shadow-inner ${isDrawingPath ? "cursor-crosshair" : ""}`}
+          style={{ 
+            minHeight: "700px", 
+            width: "100%",
+            height: `${currentGridConfig.height * currentGridConfig.cellSize + 40}px`,
+            maxWidth: `${currentGridConfig.width * currentGridConfig.cellSize + 40}px`,
+            margin: "0 auto"
+          }}
           onClick={(e) => {
             if (isDrawingPath) {
               const gridElement = e.currentTarget as HTMLElement;
@@ -254,10 +277,11 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
         >
           {/* Grid Background Pattern */}
           <div 
-            className="absolute inset-0 opacity-20" 
+            className="absolute inset-0 opacity-40" 
             style={{
-              backgroundImage: `linear-gradient(#ccc 1px, transparent 1px), linear-gradient(90deg, #ccc 1px, transparent 1px)`,
-              backgroundSize: `${currentGridConfig.cellSize}px ${currentGridConfig.cellSize}px`
+              backgroundImage: `linear-gradient(#9ca3af 1px, transparent 1px), linear-gradient(90deg, #9ca3af 1px, transparent 1px)`,
+              backgroundSize: `${currentGridConfig.cellSize}px ${currentGridConfig.cellSize}px`,
+              backgroundColor: '#f8fafc'
             }}
           />
 
