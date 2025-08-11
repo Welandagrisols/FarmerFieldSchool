@@ -54,15 +54,22 @@ export function DraggablePlot({
     if (!isDragging || !plotRef.current?.parentElement) return;
 
     const containerRect = plotRef.current.parentElement.getBoundingClientRect();
-    const newX = Math.floor((e.clientX - containerRect.left - dragOffset.x) / cellSize);
-    const newY = Math.floor((e.clientY - containerRect.top - dragOffset.y) / cellSize);
+    
+    // Calculate precise position (not snapped to grid cells for smoother movement)
+    const rawX = (e.clientX - containerRect.left - dragOffset.x) / cellSize;
+    const rawY = (e.clientY - containerRect.top - dragOffset.y) / cellSize;
+    
+    // Allow free movement with loose constraints (1m boundary margin)
+    const BOUNDARY_MARGIN = 1;
+    const newX = Math.max(BOUNDARY_MARGIN, Math.min(gridWidth - plot.width - BOUNDARY_MARGIN, rawX));
+    const newY = Math.max(BOUNDARY_MARGIN, Math.min(gridHeight - plot.height - BOUNDARY_MARGIN, rawY));
+    
+    // Snap to grid when close to grid lines (optional for cleaner placement)
+    const snappedX = Math.round(newX);
+    const snappedY = Math.round(newY);
 
-    // Constrain to grid boundaries
-    const constrainedX = Math.max(0, Math.min(gridWidth - plot.width, newX));
-    const constrainedY = Math.max(0, Math.min(gridHeight - plot.height, newY));
-
-    if (constrainedX !== plot.x || constrainedY !== plot.y) {
-      onMove(plot.id, constrainedX, constrainedY);
+    if (Math.abs(snappedX - plot.x) > 0.1 || Math.abs(snappedY - plot.y) > 0.1) {
+      onMove(plot.id, snappedX, snappedY);
     }
   };
 

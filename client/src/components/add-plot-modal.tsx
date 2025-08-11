@@ -2,8 +2,8 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { insertPlotSchema, InsertPlot } from "@shared/schema";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { insertPlotSchema, InsertPlot, Plot } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,75 @@ export function AddPlotModal({ isOpen, onClose, farmId, onSuccess }: AddPlotModa
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedColor, setSelectedColor] = useState<PlotColor>('green');
+
+  // Get existing plots to calculate next position
+  const { data: existingPlots = [] } = useQuery<Plot[]>({
+    queryKey: ['/api/farms', farmId, 'plots'],
+    enabled: !!farmId,
+  });
+
+  // Calculate next available position with proper spacing
+  const getNextPlotPosition = (plotWidth: number, plotHeight: number) => {
+    const SPACING = 1; // 1 meter spacing between plots
+    const BOUNDARY_MARGIN = 1; // 1 meter from farm boundary
+    const GRID_MAX_WIDTH = 30; // Grid boundaries
+    const GRID_MAX_HEIGHT = 30;
+    
+    // Start from boundary margin
+    let currentX = BOUNDARY_MARGIN;
+    let currentY = BOUNDARY_MARGIN;
+    
+    // Find first available position
+    for (let y = BOUNDARY_MARGIN; y <= GRID_MAX_HEIGHT - plotHeight - BOUNDARY_MARGIN; y += plotHeight + SPACING) {
+      for (let x = BOUNDARY_MARGIN; x <= GRID_MAX_WIDTH - plotWidth - BOUNDARY_MARGIN; x += plotWidth + SPACING) {
+        
+        // Check if this position overlaps with any existing plot
+        const hasOverlap = existingPlots.some(plot => {
+          const plotRight = plot.x + plot.width;
+          const plotBottom = plot.y + plot.height;
+          const newPlotRight = x + plotWidth;
+          const newPlotBottom = y + plotHeight;
+          
+          // Check if rectangles overlap (including spacing buffer)
+          return !(
+            x >= plotRight + SPACING || // New plot is to the right with spacing
+            newPlotRight <= plot.x - SPACING || // New plot is to the left with spacing
+            y >= plotBottom + SPACING || // New plot is below with spacing
+            newPlotBottom <= plot.y - SPACING // New plot is above with spacing
+          );
+        });
+        
+        if (!hasOverlap) {
+          return { x, y };
+        }
+      }
+    }
+    
+    // If no space found with perfect spacing, try to find any available space
+    for (let y = BOUNDARY_MARGIN; y <= GRID_MAX_HEIGHT - plotHeight - BOUNDARY_MARGIN; y++) {
+      for (let x = BOUNDARY_MARGIN; x <= GRID_MAX_WIDTH - plotWidth - BOUNDARY_MARGIN; x++) {
+        const hasOverlap = existingPlots.some(plot => {
+          return !(
+            x >= plot.x + plot.width ||
+            x + plotWidth <= plot.x ||
+            y >= plot.y + plot.height ||
+            y + plotHeight <= plot.y
+          );
+        });
+        
+        if (!hasOverlap) {
+          return { x, y };
+        }
+      }
+    }
+    
+    // Fallback - place at the first available row
+    const maxRow = existingPlots.reduce((max, plot) => Math.max(max, plot.y + plot.height), 0);
+    return { 
+      x: BOUNDARY_MARGIN, 
+      y: Math.max(BOUNDARY_MARGIN, maxRow + SPACING) 
+    };
+  };
 
   const form = useForm<PlotFormData>({
     resolver: zodResolver(insertPlotSchema.omit({ farmId: true })),
@@ -60,8 +129,13 @@ export function AddPlotModal({ isOpen, onClose, farmId, onSuccess }: AddPlotModa
   });
 
   const handleSubmit = (data: PlotFormData) => {
+    // Calculate the best position for this plot
+    const position = getNextPlotPosition(data.width, data.height);
+    
     createPlotMutation.mutate({
       ...data,
+      x: position.x,
+      y: position.y,
       color: selectedColor,
       farmId,
     });

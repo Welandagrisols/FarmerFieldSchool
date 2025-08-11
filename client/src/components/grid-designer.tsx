@@ -235,6 +235,19 @@ export function GridDesigner({ farmId }: GridDesignerProps) {
           onUndoPoint={handleUndoPoint}
         />
         
+        {/* Farm Layout Info */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="text-sm text-blue-800">
+            <p><strong>Smart Layout System:</strong></p>
+            <ul className="list-disc list-inside mt-1 space-y-1">
+              <li>New plots automatically place with 1m spacing</li>
+              <li>Plots maintain 1m distance from farm boundaries</li>
+              <li>Drag plots freely to any position on your farm</li>
+              <li>Total plots: {plots.length}</li>
+            </ul>
+          </div>
+        </div>
+
         {/* Farm Grid Canvas */}
         <div 
           ref={gridRef}
