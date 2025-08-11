@@ -119,10 +119,17 @@ export function CreateFarmProjectModal({
   };
 
   const onSubmit = (data: ProjectFormData) => {
-    createProjectMutation.mutate({
+    console.log("Form submitted with data:", data);
+    console.log("Form errors:", errors);
+    console.log("Selected crops:", selectedCrops);
+    
+    const submitData = {
       ...data,
       crops: selectedCrops.length > 0 ? selectedCrops : null,
-    });
+    };
+    
+    console.log("Submitting to API:", submitData);
+    createProjectMutation.mutate(submitData);
   };
 
   const handleClose = () => {
@@ -334,6 +341,7 @@ export function CreateFarmProjectModal({
               type="submit"
               disabled={isSubmitting}
               className="min-w-[120px]"
+              onClick={() => console.log("Create button clicked, form errors:", errors)}
             >
               {isSubmitting ? "Creating..." : "Create Project"}
             </Button>
